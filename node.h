@@ -1,26 +1,23 @@
 #ifndef NODE_H
 #define NODE_H
 
+#define NUM_OPTIONS 32
+#define MAX_INOUT 16
+
 /* Estruturas */
 
 typedef struct node {
     int id;
     char* cmd;
-    int* in;
-    int* out;
+    int in[MAX_INOUT];
+    int out[MAX_INOUT];
 } *Node;
-
-typedef struct lnode {
-    Node n;
-    struct lnode *next;
-} *LNode;
 
 /* API */
 
-void add_node_to_network(LNode l, Node n);
-void add_connections(LNode l, char* nodes);
+GSList* add_node_to_network(GSList* l, Node n);
+void add_connections(GSList* l, char* connections);
 
 Node create_node(int id, char* cmd);
-Node add_in(Node n, char* ins);
 
 #endif

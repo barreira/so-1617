@@ -4,13 +4,13 @@
 #include <unistd.h>   // read
 #include <string.h>   // strcmp, strtok
 #include <stdlib.h>   // atoi
+#include <glib.h>     // linked list
 
 #include "node.h"
 
-#define MAX_SIZE    1024
-#define NUM_OPTIONS 32
+#define MAX_SIZE 1024
 
-LNode network;
+GSList* network;
 
 void node(char** options)
 {
