@@ -4,6 +4,15 @@
 
 #include "node.h"
 
+/* FREE */
+
+void freeNode(Node n)
+{
+    free(n->cmd);
+    free(n);
+    n = NULL;
+}
+
 /* FUNÇÕES AUXILIARES */
 
 GSList* add_node_to_network(GSList* l, Node n)
@@ -18,6 +27,8 @@ GSList* get_node(GSList* l, int id)
 
     GSList* res = g_slist_find(l, n);
 
+    freeNode(n);
+
     return res;
 }
 
@@ -25,7 +36,7 @@ GSList* get_node(GSList* l, int id)
 
 void close_connections(GSList* l, char* connections)
 {
-    
+
 }
 
 /* ADD CONNECTIONS */

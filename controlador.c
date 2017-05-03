@@ -95,7 +95,7 @@ int interpretador(char* cmdline)
         inject(options);
     }
 
-    else {
+    else { /* Comando não existe */
         return 1;
     }
 
