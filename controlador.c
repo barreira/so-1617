@@ -60,7 +60,20 @@ void connect(char** options)
 
 void disconnect(char** options)
 {
-    
+    // disconnect 2 3
+    // options[0] = "disconnect"
+    // options[1] = "2"
+    // options[2] = "3"
+
+    int i;
+    char* connections = "";
+
+    for (i = 1; options[i] != NULL; i++) {
+        strcat(connections, options[i]);
+        strcat(connections, " ");
+    }
+
+    close_connections(network, connections);
 }
 
 void inject(char** options)

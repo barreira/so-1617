@@ -34,9 +34,38 @@ GSList* get_node(GSList* l, int id)
 
 /* CLOSE CONNECTIONS */
 
-void close_connections(GSList* l, char* connections)
+void close_in(GSList* n, int id)
+{
+    
+}
+
+void close_out(GSList* n, int id)
 {
 
+}
+
+void close_connections(GSList* l, char* connections)
+{
+    // connections = "2 3"
+
+    int i;
+    char* nodes[NUM_OPTIONS];
+    GSList *n1, *n2;
+
+    nodes[i] = strtok(connections, " ");
+
+    while (nodes[i] != NULL) {
+        nodes[++i] = strtok(NULL, " ");
+    }
+
+    // connections[0] = "2"
+    // connections[1] = "3"
+
+    n1 = get_node(l, atoi(connections[0]));
+    n2 = get_node(l, atoi(connections[1]));
+
+    n1 = close_out();
+    n2 = close_in();
 }
 
 /* ADD CONNECTIONS */

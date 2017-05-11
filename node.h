@@ -9,8 +9,8 @@
 typedef struct node {
     int id;
     char* cmd;
-    int in[MAX_INOUT];
-    int out[MAX_INOUT];
+    int in[MAX_INOUT];  // GArray
+    int out[MAX_INOUT]; // GSList* out;
 } *Node;
 
 /* API */
