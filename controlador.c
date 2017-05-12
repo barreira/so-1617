@@ -4,38 +4,129 @@
 #include <unistd.h>   // read
 #include <string.h>   // strcmp, strtok
 #include <stdlib.h>   // atoi
-#include <glib.h>     // linked list
-
-#include "node.h"
 
 #define MAX_SIZE 1024
 
-GSList* network;
+pid_t* network = NULL;
+int numnodes = 1;
+int nodecap = 1;
 
-void node(char** options)
+pid_t* add_node_to_network(pid_t pid)
 {
-    // node 1 windows 2 avg 10
-    // options[0] = "node"
-    // options[1] = "1"
-    // options[2] = "windows"
-    // options[3] = "2"
-    // options[4] = "avg"
-    // options[5] = "10"
-
-    int i;
-    char* cmd = "";
-
-    for (i = 2; options[i] != NULL; i++) {
-        strcat(cmd, options[i]);
-        strcat(cmd, " ");
+    if (network == NULL) {
+        network = malloc(sizeof(pid_t));
+        network[0] = pid;
     }
- 
-    Node n = create_node(atoi(options[1]), cmd);
 
-    add_node_to_network(network, n);
+    else if (numnodes == nodecap) {
+        network = realloc(network, sizeof(pid_t) * nodecap * 2);
+        nodecap *= 2;
+        network[numnodes] = pid;
+        numnodes++;
+    }
+
+    return network;
 }
 
-void connect(char** options)
+int exec_component(char** cmd)
+{
+    if (strcmp(cmd[0], "const") == 0) {
+        const(&cmd[1]); // falta corrigir isto
+    }
+
+    else if (strcmp(cmd[0], "filter") == 0) {
+        filter(&cmd[1]); // falta corrigir isto
+    }
+
+    else if (strcmp(cmd[0], "window") == 0) {
+        window(&cmd[1]); // falta corrigir isto
+    }
+
+    else if (strcmp(cmd[0], "spawn") == 0) {
+        spawn(&cmd[1]); // falta corrigir isto
+    }
+
+    else { /* Componente não existe */
+        return 1;
+    }
+
+    return 0;    
+}
+
+
+int node(char** options) // e.g node 1 window 2 avg 10
+{
+    int wr[2], rd[2];
+    pid_t pid, first, second, third;
+    ssize_t bytes;
+    char buff_rd[MAX_SIZE], buff_wr[MAX_SIZE];
+
+    pid = fork();
+
+    if (pid == -1) {
+        perror("fork");
+        return 1;
+    }
+
+    if (pid == 0) {
+        pipe(wr);
+        pipe(rd);
+
+        first = fork();
+
+        if (first == 0) { // leitor
+            close(wr[0]);
+            close(rd[0]);
+            close(rd[1]);
+
+            while ((bytes = read(0, buff_rd, MAX_SIZE)) > 0) { // tem de ser readln
+                write(wr[1], buff_rd, bytes);
+            }
+
+            _exit(0);
+        }
+
+        second = fork();
+
+        if (second == 0) { // filtro
+            dup2(wr[0], 0);
+            dup2(rd[1], 1);
+
+            close(wr[1]);
+            close(rd[0]);
+
+            exec_component(&options[2]);
+
+            _exit(0);
+        }
+
+        third = fork();
+
+        if (third == 0) { // escritor
+            close(rd[1]);
+            close(wr[0]);
+            close(wr[1]);
+
+            while ((bytes = read(rd[0], buff_wr, MAX_SIZE)) > 0) { // tem de ser readln
+                write(1, buff_wr, bytes);
+            }
+
+            _exit(0);
+        }
+
+        close(wr[0]);
+        close(wr[1]);
+        close(rd[0]);
+        close(rd[1]);
+    }
+    else {
+        network = add_node_to_network(pid);
+    }
+
+    return 0;
+}
+
+int connect(char** options)
 {
     // connect 2 3 5
     // options[0] = "connect"
@@ -55,10 +146,10 @@ void connect(char** options)
         strcat(connections, " ");
     }
 
-    add_connections(network, connections);
+    //add_connections(network, connections);
 }
 
-void disconnect(char** options)
+int disconnect(char** options)
 {
     // disconnect 2 3
     // options[0] = "disconnect"
@@ -73,18 +164,18 @@ void disconnect(char** options)
         strcat(connections, " ");
     }
 
-    close_connections(network, connections);
+    //close_connections(network, connections);
 }
 
-void inject(char** options)
+int inject(char** options)
 {
     
 }
 
 int interpretador(char* cmdline)
 {
-    char* options[NUM_OPTIONS];
-    int i = 0;
+    char* options[MAX_SIZE];
+    int i = 0, error = 0;
 
     options[i] = strtok(cmdline, " ");
 
@@ -93,19 +184,19 @@ int interpretador(char* cmdline)
     }
 
     if (strcmp(options[0], "node") == 0) {
-        node(options);
+        return node(options);
     }
 
     else if (strcmp(options[0], "connect") == 0) {
-        connect(options);
+        return connect(options);
     }
 
     else if (strcmp(options[0], "disconnect") == 0) {
-        disconnect(options);
+        return disconnect(options);
     }
 
     else if (strcmp(options[0], "inject") == 0) {
-        inject(options);
+        return inject(options);
     }
 
     else { /* Comando não existe */
