@@ -9,8 +9,17 @@
 
 
 /*filter <coluna> <operador> <operando>
-Este programa reproduz as linhas que satisfazem uma condic ̧ a  ̃ o indicada nos seus argumentos. 
+Este programa reproduz as linhas que satisfazem uma condicão indicada nos seus argumentos. 
 =, >=, <=, >, <, !=.
+
+./a.out coluna condição valor-de-comparação
+
+input: a:5:c "<=" 10
+output: a:5:c
+
+input a:10:c ">" 20
+output:
+
 */
 
 
@@ -18,12 +27,10 @@ int main(int argc, char const *argv[]){
 
    char buffer[PIPE_BUF];
    char print[PIPE_BUF];
-   int n, coluna = atoi(argv[1]), valor = atoi(argv[3]);
+   int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut;
    char field[10];
-   int s,cut;
    
    while(n = read(0,buffer,PIPE_BUF)) {      
-      //buffer[n-1] = '\0'; //tirar /n
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
@@ -34,15 +41,13 @@ int main(int argc, char const *argv[]){
          //if ( *ptr != ':' )  {  break; /* falhou*/  }
          ++ptr; /* salta o : */
       }
-   //write(1,print,strlen(print));
    //verifica o argumento e faz a comparação
-   if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,buffer,n);  } //printf("ACERTEI NO =\n"); 
-   if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,buffer,n); } //printf("ACERTEI NO >=\n"); }
-   if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,buffer,n); } //printf("ACERTEI NO <=\n"); }
-   if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,buffer,n); } //printf("ACERTEI NO >\n"); }
-   if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,buffer,n); } //printf("ACERTEI NO <\n"); }
-   if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); } //printf("ACERTEI NO !=\n"); }
-
+   if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,buffer,n);  } 
+   if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,buffer,n); } 
+   if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,buffer,n); }
+   if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,buffer,n); } 
+   if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,buffer,n); }
+   if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
    }
 
 

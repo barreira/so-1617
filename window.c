@@ -9,12 +9,20 @@
 
 /*window <coluna> <operacao> <linhas>
 Este programa reproduz todas as linhas acrescentando-lhe uma nova coluna com o resultado de uma
-operac ̧ a  ̃ o calculada sobre os valores da coluna indicada nas linhas anteriores.
+operacão  é calculada sobre os valores da coluna indicada nas linhas anteriores.
 avg, max, min, sum
-*/
 
-//só trabalha com inteiros
-//avg dá inteiros
+./a.out 1 sum 3
+
+input: 10:a:b
+output: 10:a:b:10
+
+input: 10
+output: 10:20
+
+input: 5:c:d
+output: 5:c:d:25
+*/
 
 
 int main(int argc, char const *argv[]){
@@ -27,15 +35,12 @@ int main(int argc, char const *argv[]){
 	char print[PIPE_BUF];
 	char final[PIPE_BUF];
 	char field[10];
-
-	//inicializar valores armazenados tudo a 0
-	for(i=0;i<linhas;i++) { stored[i] = 0; }
-
+	
 	//AVG
 	int do_avg(){
 		if(first == 0) { first++; return 0; } //quando começa dá sempre 0
 		if(first == 1) {first++; return stored[0]; } //quando só tem uma coluna dá o valor dessa coluna
-		else if(first < linhas) {
+		else if(first < linhas) { //a partir dai enquanto que não houver buffer, utiliza as x linhas existentes
 					int avg = 0;
 					for(i=0;i<first;i++) {
 					avg = avg + stored[i];
@@ -52,7 +57,7 @@ int main(int argc, char const *argv[]){
 	}
 	//MAX
 	int do_max(){
-		if(first == 0) { first++;	for(i=0;i<linhas;i++) { stored[i] = res; } } //evitar MAX seja <0
+		if(first == 0) { first++;	for(i=0;i<linhas;i++) { stored[i] = res; } } //incialização para máximo
 		int max;
 		max = stored[0];
 		for(i=1;i<linhas;i++) {
@@ -62,7 +67,7 @@ int main(int argc, char const *argv[]){
 	}
 	//min
 	int do_min(){
-		if(first == 0) { first++;	for(i=0;i<linhas;i++) { stored[i] = res; } } //evitar min >0
+		if(first == 0) { first++;	for(i=0;i<linhas;i++) { stored[i] = res; } } //incialização para min
 		int min;
 		min = stored[0];
 		for(i=1;i<linhas;i++) {
@@ -72,6 +77,7 @@ int main(int argc, char const *argv[]){
 	}
 	//SUM
 	int do_sum(){
+		if(first == 0)  { for(i=1;i<linhas;i++) { stored[i] = 0; } first++; } //inicializar todos os valores a 0
 		int sum = 0;
 		for(i=0;i<linhas;i++) {
 			sum = sum + stored[i];
@@ -87,7 +93,7 @@ int main(int argc, char const *argv[]){
 		if(strcmp(argv[2],"sum") == 0) return do_sum();
 	}
 
-	//adiciona um novo valor ao array
+	//adiciona um novo valor ao array e tira o mais antigo
 	void novo_valor(int a){
 		for(i=linhas;i>=1;i--) {
 			stored[i] = stored[i-1];
@@ -96,7 +102,6 @@ int main(int argc, char const *argv[]){
 	}
 
    while(n = read(0,buffer,PIPE_BUF)) {      
-      //buffer[n-1] = '\0'; //tirar /n
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
@@ -104,11 +109,10 @@ int main(int argc, char const *argv[]){
          cut++;
          if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
          ptr += s; /* avançar os characteres lidos */
-         //if ( *ptr != ':' )  {  break; /* falhou*/  }
          ++ptr; /* salta o : */
       }
-      //fazer operações
-      res = atoi(print); //guardar valor
+      //fazer as operações
+      res = atoi(print); //guardar valor para inteiro
       novo_valor(res); //adiciona novo valor
       res = do_op(); //faz as contas
       buffer[n-1] = '\0'; //tirar /n
