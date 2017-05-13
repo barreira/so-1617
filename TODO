@@ -14,5 +14,13 @@
 
 - remover includes desncessários
 
-################# todas elas só funcionam com inteiros para produzirem resultados correctos (em divisões descarta o resto, penso que não seja preciso perder tempo com isto)
+######## spawn.c
 
+- remover includes desncessários
+- assume que só vai haver um $n, alterar para receber mais ?
+
+!!! todas elas só funcionam com inteiros para produzirem resultados correctos (em divisões descarta o resto, penso que não seja preciso perder tempo com isto)
+
+######## makefile
+
+estive a alterar, mas não ficou a 100%, mais para a frente vê-se isto

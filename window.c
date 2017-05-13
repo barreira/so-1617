@@ -86,11 +86,11 @@ int main(int argc, char const *argv[]){
 	}
 
 	//faz operação
-	int do_op() {
-		if(strcmp(argv[2],"avg") == 0) return do_avg();
-		if(strcmp(argv[2],"max") == 0) return do_max();
-		if(strcmp(argv[2],"min") == 0) return do_min();
-		if(strcmp(argv[2],"sum") == 0) return do_sum();
+	void do_op() {
+		if(strcmp(argv[2],"avg") == 0) res = do_avg();
+		if(strcmp(argv[2],"max") == 0) res = do_max();
+		if(strcmp(argv[2],"min") == 0) res = do_min();
+		if(strcmp(argv[2],"sum") == 0) res = do_sum();
 	}
 
 	//adiciona um novo valor ao array e tira o mais antigo
@@ -101,7 +101,7 @@ int main(int argc, char const *argv[]){
 		stored[0] = a;
 	}
 
-   while(n = read(0,buffer,PIPE_BUF)) {      
+   while((n = read(0,buffer,PIPE_BUF))) {      
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
@@ -114,11 +114,12 @@ int main(int argc, char const *argv[]){
       //fazer as operações
       res = atoi(print); //guardar valor para inteiro
       novo_valor(res); //adiciona novo valor
-      res = do_op(); //faz as contas
+      do_op(); //faz as contas e actualiza res(ultado)
       buffer[n-1] = '\0'; //tirar /n
 	  sprintf(final,"%s:%i\n",buffer,res); //acrescentar resultado fim da linha
 	  write(1,final,strlen(final));
 
   }
 
+  return 0;
 }

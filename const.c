@@ -19,10 +19,11 @@ int main(int argc, char const *argv[]){
 	char print[PIPE_BUF];
 	int n;
 
-	while(n = read(0,buffer,PIPE_BUF)) {		
+	while((n = read(0,buffer,PIPE_BUF))) {		
 		buffer[n-1] = '\0'; //tirar /n
 		sprintf(print,"%s:%s\n",buffer,argv[1]); //acrescentar resto :const
 		write(1,print,strlen(print)); //write stdout
 	}
 
+	return 0;
 }

@@ -52,7 +52,7 @@ int main(int argc, char const *argv[]){
 	}
 
 	//processar input
-	while(n = read(0,buffer,PIPE_BUF)) {      
+	while((n = read(0,buffer,PIPE_BUF))) {      
     	//Achar a(s) coluna(s)
     	char *ptr = buffer;
     	cut = 0;
@@ -78,4 +78,6 @@ int main(int argc, char const *argv[]){
       	if(WIFEXITED(status)) { sprintf(final,"%s:%i\n",buffer,WEXITSTATUS(status)); } //adicionar o exit status
 		write(1,final,strlen(final));
 	}
+
+	return 0; //nunca chega
 }

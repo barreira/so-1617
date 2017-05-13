@@ -30,7 +30,7 @@ int main(int argc, char const *argv[]){
    int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut;
    char field[10];
    
-   while(n = read(0,buffer,PIPE_BUF)) {      
+   while((n = read(0,buffer,PIPE_BUF))) {      
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
@@ -50,5 +50,6 @@ int main(int argc, char const *argv[]){
    if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
    }
 
+   return 0;
 
 }
