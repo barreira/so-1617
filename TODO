@@ -1,9 +1,18 @@
 ######### const.c 
 
-remover includes desncessários
+- remover includes desnecessários
 
 ######### filter.c
 
-falha quando se usa floats
+- remover includes desnecessários
 
+######## window
+
+- remover includes desncessários
+
+####### filter.c
+
+- remover includes desncessários
+
+################# todas elas só funcionam com inteiros para produzirem resultados correctos (em divisões descarta o resto, penso que não seja preciso perder tempo com isto)
 
