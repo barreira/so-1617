@@ -50,6 +50,7 @@ int main(int argc, char const *argv[]){
    if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
    }
 
-   return 0;
+  return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
+
 
 }

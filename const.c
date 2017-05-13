@@ -25,5 +25,6 @@ int main(int argc, char const *argv[]){
 		write(1,print,strlen(print)); //write stdout
 	}
 
-	return 0;
+  return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
+
 }

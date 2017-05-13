@@ -79,5 +79,6 @@ int main(int argc, char const *argv[]){
 		write(1,final,strlen(final));
 	}
 
-	return 0; //nunca chega
+  return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
+
 }
