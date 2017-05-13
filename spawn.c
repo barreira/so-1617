@@ -34,7 +34,7 @@ int main(int argc, char const *argv[]){
 	if(argc < 2) { write(2,"Sem argumentos!!",16); return 2; }
 
 	//passar argumentos para array ; remover ./a.out
-	//--argc; ++argv; Dava se não fosse preciso alterar os argvs para o n da coluna a executar
+	//--argc; ++argv;
 	for(i=0;i<argc;i++) {
 		    if(i+1 == argc) cmd[argc] = NULL;
 		    else cmd[i] = argv[i+1];
