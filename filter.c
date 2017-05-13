@@ -12,7 +12,7 @@
 Este programa reproduz as linhas que satisfazem uma condicão indicada nos seus argumentos. 
 =, >=, <=, >, <, !=.
 
-./a.out coluna condição valor-de-comparação
+./a.out coluna "condição" valor-de-comparação
 
 input: a:5:c "<=" 10
 output: a:5:c
