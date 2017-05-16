@@ -4,8 +4,9 @@
 #include <unistd.h>   // read
 #include <string.h>   // strcmp, strtok
 #include <stdlib.h>   // atoi
+#include <limits.h>
 
-#define MAX_SIZE 1024
+#define MAX_SIZE 1024 //O size é o PIPE_BUF 4064 salvo erro, mas já está definido 
 
 pid_t* network = NULL;
 int numnodes = 1;
@@ -27,11 +28,11 @@ pid_t* add_node_to_network(pid_t pid)
 
     return network;
 }
-
+/*
 int exec_component(char** cmd)
 {
     if (strcmp(cmd[0], "const") == 0) {
-        const(&cmd[1]); // falta corrigir isto
+       //const(&cmd[1]); // falta corrigir isto
     }
 
     else if (strcmp(cmd[0], "filter") == 0) {
@@ -46,7 +47,7 @@ int exec_component(char** cmd)
         spawn(&cmd[1]); // falta corrigir isto
     }
 
-    else { /* Componente não existe */
+    else { // Componente não existe 
         return 1;
     }
 
@@ -174,7 +175,7 @@ int inject(char** options)
 
 int interpretador(char* cmdline)
 {
-    char* options[MAX_SIZE];
+    char* options[PIPE_BUF];
     int i = 0, error = 0;
 
     options[i] = strtok(cmdline, " ");
@@ -184,7 +185,10 @@ int interpretador(char* cmdline)
     }
 
     if (strcmp(options[0], "node") == 0) {
-        return node(options);
+        //return node(options);
+        //node 1 const 10
+        //esperar para saber que node se connecta em qual ?
+        //create_node(options[1],options[2],options[3]);
     }
 
     else if (strcmp(options[0], "connect") == 0) {
@@ -199,26 +203,54 @@ int interpretador(char* cmdline)
         return inject(options);
     }
 
-    else { /* Comando não existe */
+    else { // Comando não existe
         return 1;
     }
 
     return 0;
+}
+*/
+//teste
+int fd;
+char *in = "/tmp/myfifo";
+char *out[10];
+//in = "1";
+int pid[5];
+//out[0] = "log.txt";
+//out[1] = "saida2.txt";
+//mkfifo(out[0],0666);
+void run_test() {
+    mkfifo(in, 0666); //faz fifo com id in, node in vai ler sempre daquele fifo
+    //fork(), cria nodo, tee rederecionar para nodos saida out) e rederecionar stdin pelo in
+    pid[atoi(in)] = fork(); //id guardado em pid[id]
+    if(pid[atoi(in)] == 0) {
+        if ((fd = open("in",O_RDONLY)) == -1) { //abrir fifo leitura
+        perror("Abertura de myfifo");
+        exit (-1);
+    }
+        dup2(fd,0); //rederecionar stdin para leitura do fifo
+        //stdout feito com o tee - saber as saidas antes de executar? carregando de ficheiro é fácil, um a um tem de se rever isto; não testei se ele fica a espera para escrever e pode sempre funcionar.
+        execl("./const","./const","10","|","tee","log.txt","saida2.txt",NULL); //mandar como array para não ter problemas com o out[]; fazer antes a junção dos 2 cmds; tee so manda para ficheiro, tem de se ver para um fifo
+        //feito?
+
+    }
+    //guardar pid fork algures para usar mais tarde
+
 }
 
 int main(int argc, char* argv[])
 {
     int n;
     int fd1;
-    char* buffer;
-    
+    char* buffer[PIPE_BUF];
+    int sair = 0; //para ter um exit e aproveitar para mandar um signal kill -9 a todos os activos :)
     network = NULL;
 
     if (argc == 2) {
         // ler ficheiro de configuração (se existir)        
     }
 
-    if (mkfifo("fifo", 0666) == -1) {
+    /*if (mkfifo("fifo", 0666) == -1) {
         perror("mkfifo");
     }
 
@@ -226,10 +258,12 @@ int main(int argc, char* argv[])
         perror("open");
         return 1;
     }
+    */
 
-    while(1) {
-        while((n = read(fd1, buffer, MAX_SIZE)) > 0 ) {
-            interpretador(buffer);
+    while(!sair) {
+        while((n = read(0, buffer, PIPE_BUF)) > 0 ) {
+           // interpretador(buffer);
+
         }
     }
 
