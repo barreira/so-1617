@@ -1,26 +1,8 @@
-######### const.c 
+######### filtros	
 
-- remover includes desnecessários
+- fazer readline para usar no controlador
 
-######### filter.c
 
-- remover includes desnecessários
-
-######## window
-
-- remover includes desncessários
-
-####### filter.c
-
-- remover includes desncessários
-
-######## spawn.c
-
-- remover includes desncessários
-- assume que só vai haver um $n, alterar para receber mais ?
-
-!!! todas elas só funcionam com inteiros para produzirem resultados correctos (em divisões descarta o resto, penso que não seja preciso perder tempo com isto)
 
 ######## makefile
 
-estive a alterar, mas não ficou a 100%, mais para a frente vê-se isto
