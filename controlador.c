@@ -4,12 +4,14 @@
 #include <unistd.h>   // read
 #include <string.h>   // strcmp, strtok
 #include <stdlib.h>   // atoi
-#include <glib.h>     // linked list
+#include <limits.h> //PIPE_BUF
+//#include <glib.h>     // linked list
 
 #define MAX_SIZE 1024
 
-GSList* network = NULL;
+//GSList* network = NULL;
 
+/* 
 void fanout(int in, int out[], int n)
 {
     // 
@@ -24,12 +26,11 @@ void fanout(int in, int out[], int n)
         }
     }
 }
+*/
+void fanin(int in[], int n, int out) {}
 
-void fanin(int in[], int n, int out)
-{
 
-}
-
+/*
 int exec_component(char** cmd)
 {
     if (strcmp(cmd[0], "const") == 0) {
@@ -48,13 +49,13 @@ int exec_component(char** cmd)
         spawn(&cmd[1]); // falta corrigir isto
     }
 
-    else { /* Componente não existe */
+    else { // Componente não existe 
         return 1;
     }
 
     return 0;    
 }
-
+*/
 // node 1 windows 2 avg 10
 // options[0] = "node"
 // options[1] = "1"
@@ -62,6 +63,8 @@ int exec_component(char** cmd)
 // options[3] = "2"
 // options[4] = "avg"
 // options[5] = "10"
+
+/*
 int node(char** options) // e.g node 1 window 2 avg 10
 {   
     int i, nb1, nb2, nb3;
@@ -154,6 +157,8 @@ int node(char** options) // e.g node 1 window 2 avg 10
 
     return 0;
 }
+*/
+
 
 int connect(char** options)
 {
@@ -192,11 +197,8 @@ int disconnect(char** options)
     //close_connections(network, connections);
 }
 
-int inject(char** options)
-{
-    
-}
-
+int inject(char** options) {  }
+/*
 int interpretador(char* cmdline)
 {
     char* options[MAX_SIZE];
@@ -209,7 +211,7 @@ int interpretador(char* cmdline)
     }
 
     if (strcmp(options[0], "node") == 0) {
-        return node(options);
+       return node(options);
     }
 
     else if (strcmp(options[0], "connect") == 0) {
@@ -224,12 +226,15 @@ int interpretador(char* cmdline)
         return inject(options);
     }
 
-    else { /* Comando não existe */
+    else { // Comando não existe 
         return 1;
     }
 
     return 0;
 }
+*/
+
+
 
 int main(int argc, char* argv[])
 {
@@ -237,12 +242,12 @@ int main(int argc, char* argv[])
     int fd1;
     char* buffer;
     
-    network = NULL;
+    //network = NULL;
 
     if (argc == 2) {
-        // ler ficheiro de configuração (se existir)        
+        // ler ficheiro de configuração (se existir) e executar linha a linha
     }
-
+    /*
     if (mkfifo("fifo", 0666) == -1) {
         perror("mkfifo");
     }
@@ -253,11 +258,53 @@ int main(int argc, char* argv[])
     }
 
     while(1) {
-        while((n = read(fd1, buffer, MAX_SIZE)) > 0 ) {
+        while((n = read(0, buffer, MAX_SIZE)) > 0 ) {
             interpretador(buffer);
         }
     }
+    */
 
+// ########### criar nodo ##########################################
+    int nodos[MAX_SIZE]; //num max de nodos, inicializar todos os valores a -1
+    int nodospid[MAX_SIZE]; //guardar pid nodo (para eventualmente terminar no futuro)
+    int i;
+    for (i = 0 ; i < 100 ; i++) { nodos[i] = -1; }
+
+    int create_node(int num, char *cmd[]) {
+        //verificar se já não existe esse nodo
+        //int a = atoi(num);
+        if (nodos[num] == 1) printf("Já existe esse nodo\n"); return 1; //tratar o erro?
+        // fork para correr o filtro
+        nodospid[num] = fork();
+        if(nodospid[num] == 0) {
+            //fazer fifo in e out
+            char *in,*out;
+            int fdi,fdo;
+            sprintf(in,"%din",num); // Nin
+            sprintf(out,"%dout",num); //Nout
+            write(1,"FIFO\n",7);
+            if(mkfifo(in, 0666) == -1) perror("ups fifo falhou"); fdi = open(in,O_RDONLY); //fifo leitura
+            if(mkfifo(out, 0666) == -1) perror("ups fifo falhou"); fdo = open(in,O_WRONLY); //fifo escrita
+            //rederecionar fifos
+            dup2(fdi,0); //stdin para fifoin
+            dup2(fdo,1); //stdout para fifoout
+            //executar filtro e terminou por aqui
+            execvp(cmd[0],cmd);
+        }
+        //criado com sucesso, actualizar valor nodo
+        nodos[num] = 1;
+        return 0;
+}
+// ##############################################################
+
+
+    //testar criar nodos
+    char *test[3] = {"./const","./const","10"};
+    char *test2[3] = {"./const","./const","20"};
+    create_node(1,test);
+    create_node(2,test2);
+    create_node(2,test2);
+    printf("fiz os creates\n");
     return 0;
 }
 
