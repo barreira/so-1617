@@ -20,6 +20,7 @@ SOURCES= const.c filter.c window.c spawn.c controlador.c
 OBJECTS=$(SOURCES:.c=.o)
 
 all: 
+	mkdir tmp #onde os fifos ficam guardados
 	$(CC) $(CFLAGS) $(SOURCES) -o $@
 
 %.o : %.c
@@ -27,3 +28,5 @@ all:
    
 clean:
 	rm -f *.o controlador const window spawn filter
+	rm -rf ./tmp
+
