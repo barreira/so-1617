@@ -268,31 +268,34 @@ int main(int argc, char* argv[])
     int nodos[MAX_SIZE]; //num max de nodos, inicializar todos os valores a -1
     int nodospid[MAX_SIZE]; //guardar pid nodo (para eventualmente terminar no futuro)
     int i;
-    for (i = 0 ; i < 100 ; i++) { nodos[i] = -1; }
+    for (i = 0 ; i < 100 ; i++) { nodos[i] = 0; }
 
-    int create_node(int num, char *cmd[]) {
+    int create_node(char *num, char *cmd[]) {
         //verificar se já não existe esse nodo
-        //int a = atoi(num);
-        if (nodos[num] == 1) printf("Já existe esse nodo\n"); return 1; //tratar o erro?
+        int a = atoi(num);
+        if (nodos[a] != 0) { printf("Já existe esse nodo: %d\n",a); return 1; } //tratar o erro?
         // fork para correr o filtro
-        nodospid[num] = fork();
-        if(nodospid[num] == 0) {
+        nodospid[a] = fork();
+        if(nodospid[a] == 0) {
             //fazer fifo in e out
-            char *in,*out;
+            char in[15],out[15];
             int fdi,fdo;
-            sprintf(in,"%din",num); // Nin
-            sprintf(out,"%dout",num); //Nout
-            write(1,"FIFO\n",7);
-            if(mkfifo(in, 0666) == -1) perror("ups fifo falhou"); fdi = open(in,O_RDONLY); //fifo leitura
-            if(mkfifo(out, 0666) == -1) perror("ups fifo falhou"); fdo = open(in,O_WRONLY); //fifo escrita
+            sprintf(in,"./tmp/%sin",num); // Nin
+            sprintf(out,"./tmp/%sout",num); //Nout
+            printf("valor de in: %s e valor de out: %s\n",in, out);
+            if(mkfifo(in, 0666) == -1) { perror("fifo in falhou"); } 
+            if(mkfifo(out, 0666) == -1) { perror("fifo out falhou"); } 
+            fdi = open(in,O_RDONLY); //fifo leitura
+            fdo = open(out,O_WRONLY); //fifo escrita
             //rederecionar fifos
-            dup2(fdi,0); //stdin para fifoin
-            dup2(fdo,1); //stdout para fifoout
+            dup2(fdi,0); //stdin para fifo in
+            dup2(fdo,1); //stdout para fifo out
             //executar filtro e terminou por aqui
-            execvp(cmd[0],cmd);
+            //execvp(cmd[0],cmd);
+            execlp("ls","ls","-la",NULL);
         }
         //criado com sucesso, actualizar valor nodo
-        nodos[num] = 1;
+        nodos[a] = 1;
         return 0;
 }
 // ##############################################################
@@ -301,9 +304,9 @@ int main(int argc, char* argv[])
     //testar criar nodos
     char *test[3] = {"./const","./const","10"};
     char *test2[3] = {"./const","./const","20"};
-    create_node(1,test);
-    create_node(2,test2);
-    create_node(2,test2);
+    create_node("1",test);
+    //create_node("2",test2);
+    create_node("1",test2); //erro ao criar
     printf("fiz os creates\n");
     return 0;
 }
