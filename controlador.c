@@ -11,22 +11,7 @@
 
 //GSList* network = NULL;
 
-/* 
-void fanout(int in, int out[], int n)
-{
-    // 
-    signal(sigint, f)
-    int bytes, i;
-    char buffer[MAX_SIZE];
 
-    while ((bytes = read(in, buffer, MAX_SIZE)) > 0 && running) {
-        // executa comando
-        for (i = 0; i < n; i++) {
-            write(out[i], buffer, bytes);
-        }
-    }
-}
-*/
 void fanin(int in[], int n, int out) {}
 
 
@@ -298,7 +283,66 @@ int main(int argc, char* argv[])
         nodos[a] = 1;
         return 0;
 }
-// ##############################################################
+// ################## NODE END ############################################
+
+// ########### CONNECT ##############################################
+//connect nodoX nodo(s)
+//connect 1 2
+//connect 1 2 3 4
+
+//função signal para a fanout
+void stopfan(int n) { fstop[n] = 1; } //fanout n para parar na próxima iteração
+
+//inicializações 
+int fnum = 0; //contador de fanout(s)
+int fpid[MAX_SIZE]; //pids fanout
+int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
+int fin[MAX_SIZE]; //fanout fnum in
+for(i=0;i<MAX_SIZE;i++) { fstop[i] = 0 ; fin[i] = 0; //não há nodo 0 } //zerar runs e fin
+
+
+void connect(char nodo, char out[]) {
+	fnum++; //aumentar fnum
+	a = atoi(nodo);
+	for(i=0;i<MAX_SIZE;i++) { //verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
+		if(fin[i] == a) { stopfan(a); break; } 
+	}
+	//fork, correr fanout, guardar pid fannout para mandar signal
+	fork();
+	actualizar fin[fnum] = a;
+	fanout(a, out[],fnum); //criar fannout n para usar no fstop
+}
+
+
+
+
+
+// ############# CONNECT END ######################################
+
+// #### FANOUT ###############################
+/*
+void fanout(char in, char out[], int n) // in = fifo in , out = fifo(s) out, n = fnum number
+{
+    signal(SIGUSR1, stopfan);
+    char in[15],out[15];
+    int fdi,fdo;
+    sprintf(in,"./tmp/%sin",num); // Nin
+    sprintf(out,"./tmp/%sout",num); //Nout
+    int bytes, i;
+    char buffer[MAX_SIZE];
+    reader = open()
+
+    while ((bytes = read(in, buffer, MAX_SIZE)) > 0 && running) {
+        // executa comando
+        for (i = 0; i < n; i++) {
+            write(out[i], buffer, bytes);
+        }
+    }
+}
+
+*/
+
+//##################FANOUT END ##########################
 
 
     //testar criar nodos
