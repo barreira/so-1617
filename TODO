@@ -1,11 +1,13 @@
 ######### filtros	
 
 - fazer readline para usar no controlador
+- não parar com readline EOF ?
 
 
 ####### controlador
 
 - readline para se aplicar em todos os reads
+- não parar com readline EOF ?
 
 $node
 
