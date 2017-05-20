@@ -3,6 +3,28 @@
 - fazer readline para usar no controlador
 
 
+####### controlador
+
+- readline para se aplicar em todos os reads
+
+$ connect 
+- não verifica loops
+
+$nodo
+
+$fannout
+
+
+$ disconnect
+
+
+$ inject
+
+
+$
+
+
 
 ######## makefile
 
+arranjar para compilar todos
