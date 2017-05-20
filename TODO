@@ -10,16 +10,17 @@
 - não parar com readline EOF ?
 
 $node
-
+- all done
 
 $ connect 
 - não verifica loops
+- tem de se testar criando nodos para o fifo nao bloquear
 
 	:fannout
 	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo)
 
 $ disconnect
-
+- ao remover nodo remover os fifos
 
 $ inject
 
@@ -28,7 +29,7 @@ $Funcionalidades básicas
 
 Permanência de uma rede
 Concorrência nas escritas no mesmo nó - resolvido usando PIPE_BUF, o SO garante que é tudo escrito, op atomica
-Nós sem saida definida - como se verifica? Depois de fazer todos os connects? EDIT: nós criados sem usar um dos filtros, eg: node 8 tee warm-log.txt
+Nós sem saida definida - feito, mandar option = 1, ao criar o nodo.
 Especificacação incremental da rede - neste momento descarta as saidas antigas, preciso alterar para manter as existentes
 
 $Funcionalidades adicionais (avançadas)
@@ -38,6 +39,7 @@ Alteração de componentes - alterar o filtro ? matar processo (tendo em atenç�
 Remoção de nós - todo
 
 
+ * Não sei porquê ao fim de alguns inputs desliga-se
 
 
 ######## makefile
