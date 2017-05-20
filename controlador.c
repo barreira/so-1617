@@ -208,12 +208,10 @@ int main(int argc, char* argv[]) {
 	    fdin = open("./tmp/1out",O_RDONLY);//abrir fifo entrada leitura
 	    if(fdin < 1) perror("Falhou o open no fanout");
 	    //abrir fifos outputs para escrita
-	    write(1,"vou abrir outputs:\n",19);
 	    for(i=0;i<outs;i++) { 
 	    	sprintf(outp,"./tmp/%sin",outputs[i]); //escrever nos inputs dos nos
-	    	write(1,outp,strlen(outp));
-	    	write(1,"\n",1);
 	    	prints[i] = open(outp,O_WRONLY); //verificar se abriu 
+	    	if(prints[i] < 1) perror("Falhou o open no fanout");
 	    	}
 	    //loop leitura e escrita em todos os outputs
 	    while ((bytes = read(fdin, buffer, PIPE_BUF)) > 0 && (fstop[n] == 0)) {
@@ -268,9 +266,8 @@ void connect(char *nodo, char *out[], int nouts) {
     if(fdin < 1) perror("Falhou o open no fanout");
     else write(fdin,"teste",5); */
     connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3
-    //printf("connect feito");
+    printf("connect feito, inserir colunas de teste:\n");
     
-    //mkfifo("./tmp/1in",0666);
     //simular injfect nodo1
     int fdt = open("./tmp/1in",O_WRONLY);
     while((n=read(0,buffer,PIPE_BUF))>0) {
