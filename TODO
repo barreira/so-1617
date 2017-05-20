@@ -13,6 +13,9 @@ $node
 $ connect 
 - não verifica loops
 
+	:fannout
+	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo)
+
 $ disconnect
 
 
