@@ -7,13 +7,11 @@
 
 - readline para se aplicar em todos os reads
 
+$node
+
+
 $ connect 
 - não verifica loops
-
-$nodo
-
-$fannout
-
 
 $ disconnect
 
@@ -21,7 +19,19 @@ $ disconnect
 $ inject
 
 
-$
+$Funcionalidades básicas
+
+Permanência de uma rede
+Concorrência nas escritas no mesmo nó - resolvido usando PIPE_BUF, o SO garante que é tudo escrito, op atomica
+Nós sem saida definida - como se verifica? Depois de fazer todos os connects? EDIT: nós criados sem usar um dos filtros, eg: node 8 tee warm-log.txt
+Especificacação incremental da rede - neste momento descarta as saidas antigas, preciso alterar para manter as existentes
+
+$Funcionalidades adicionais (avançadas)
+
+Casos de teste - criar ficheiro com outras configurações
+Alteração de componentes - alterar o filtro ? matar processo (tendo em atenção para terminar o fanout, e criar novo?)
+Remoção de nós - todo
+
 
 
 
