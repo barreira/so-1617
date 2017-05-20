@@ -5,6 +5,7 @@
 #include <string.h>   // strcmp, strtok
 #include <stdlib.h>   // atoi
 #include <limits.h> //PIPE_BUF
+#include <signal.h> //sinais
 //#include <glib.h>     // linked list
 
 #define MAX_SIZE 1024
@@ -126,8 +127,7 @@ int interpretador(char* cmdline)
 
 
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     int n;
     int fd1;
     char* buffer;
@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
     int i;
     for (i = 0 ; i < 100 ; i++) { nodos[i] = 0; }
 
-    int create_node(char *num, char *cmd[]) {
+    int node(char *num, char *cmd[]) {
         //verificar se já não existe esse nodo
         int a = atoi(num);
         if (nodos[a] != 0) { printf("Já existe esse nodo: %d\n",a); return 1; } //tratar o erro?
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
         //criado com sucesso, actualizar valor nodo
         nodos[a] = 1;
         return 0;
-}
+	}
 // ################## NODE END ############################################
 
 // ########### CONNECT ##############################################
@@ -187,71 +187,70 @@ int main(int argc, char* argv[])
 //connect 1 2
 //connect 1 2 3 4
 
-//função signal para a fanout
-void stopfan(int n) { fstop[n] = 1; } //fanout n para parar na próxima iteração
+	//inicializações 
+	int fnum = 0; //contador de fanout(s)
+	int fpid[MAX_SIZE]; //pids fanout
+	int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
+	int fin[MAX_SIZE]; //fanout fnum in
+	for(i=0;i<MAX_SIZE;i++) { fstop[i] = 0 ; fin[i] = 0; } // não há nodo 0  zerar runs e fin
 
-//inicializações 
-int fnum = 0; //contador de fanout(s)
-int fpid[MAX_SIZE]; //pids fanout
-int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
-int fin[MAX_SIZE]; //fanout fnum in
-for(i=0;i<MAX_SIZE;i++) { fstop[i] = 0 ; fin[i] = 0; //não há nodo 0 } //zerar runs e fin
+	//função signal para a fanout
+	void stopfan(int n) { fstop[n] = 1; } //fanout n para parar na próxima iteração
 
-
-void connect(char nodo, char out[]) {
-	fnum++; //aumentar fnum
-	a = atoi(nodo);
-	for(i=0;i<MAX_SIZE;i++) { //verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
-		if(fin[i] == a) { signal(fpid[i],SIGUSR1); break; } 
+	void connect(char nodo, char out[]) {
+		fnum++; //aumentar fnum
+		int a = atoi(nodo);
+		for(i=0;i<MAX_SIZE;i++) { //verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
+			if(fin[i] == a) { kill(fpid[i],SIGUSR1); break; } 
+		}
+		//fork, correr fanout, guardar pid fannout para mandar signal
+		fpid[fnum] = fork();
+		if(fpid[fnum] == 0) {
+		fin[fnum] = a; //fannout num fnum recebe input nodo a
+		fanout(nodo, out,fnum); //criar fannout n para usar no fstop
+		}
 	}
-	//fork, correr fanout, guardar pid fannout para mandar signal
-	fpid[fnum] = fork();
-	if(fpdi[fnum] == 0) {
-	fin[fnum] = a; //fannout num fnum recebe input nodo a
-	fanout(nodo, out[],fnum); //criar fannout n para usar no fstop
-	}
-}
 // ############# CONNECT END ######################################
 
 // #### FANOUT ###############################
-void fanout(char in, char outputs[], int n) // in = fifo in , out = fifo(s) out, n = fnum number
-{
-    signal(SIGUSR1, stopfan); //pára o fanout na próxima iteração, inicio da main ?
-    char in[15],out[15];
-	int bytes, i,osize=1;
-    char buffer[MAX_SIZE];
-    //input
-    sprintf(in,"./tmp/%sin",num); // Nin
-    inputs = open(in,O_RDONLY); //abrir fifo entrada leitura
-    //descobrir número outputs
-    for(i=0;i<osize;i++) { if(outputs[i] != '\0') osize++ ; }
-    //abrir fifos outputs para escrita
-    int prints[osize];
-    for(i=0;i<osize;i++) { 
-    	sprintf(out,"./tmp/%sout",outputs[i]); //Nout
-    	prints[i] = open(out,O_WRONLY); //verificar se abriu ?
-    }
-    //loop leitura e escrita em todos os outputs
-    while ((bytes = read(inputs, buffer, PIPE_BUF)) > 0 && (fstop[n] == 0)) {
-    	//readline
+	void fanout(char input, char outputs[], int n) {// in = fifo in , out = fifo(s) out, n = fnum number
 
-        // faz os writes em todos os outputs (prints[])
-        for (i = 0; i < osize; i++) {
-            write(prints[i], buffer, bytes);
-        }
-    }
-    //fechar fifos escrita/leitura ao receber signal para fstop ? ou não é preciso ?
-    //if (fstop[n] == 1) for ... close(...)
-}
+	    signal(SIGUSR1, stopfan); //pára o fanout na próxima iteração, inicio da main ?
+	    char in[15],out[15];
+		int bytes,i,osize=1,inputs;
+	    char buffer[MAX_SIZE];
+	    //input
+	    sprintf(in,"./tmp/%sin",input); // Nin
+	    inputs = open(in,O_RDONLY); //abrir fifo entrada leitura
+	    //descobrir número outputs
+	    for(i=0;i<osize;i++) { if(outputs[i] != '\0') osize++ ; }
+	    //abrir fifos outputs para escrita
+	    int prints[osize];
+	    for(i=0;i<osize;i++) { 
+	    	sprintf(out,"./tmp/%sout",outputs[i]); //Nout
+	    	prints[i] = open(out,O_WRONLY); //verificar se abriu ?
+	    }
+	    //loop leitura e escrita em todos os outputs
+	    while ((bytes = read(inputs, buffer, PIPE_BUF)) > 0 && (fstop[n] == 0)) {
+	    	//readline
+
+	        // faz os writes em todos os outputs (prints[])
+	        for (i = 0; i < osize; i++) {
+	            write(prints[i], buffer, bytes);
+	        }
+	    }
+	    //fechar fifos escrita/leitura ao receber signal para fstop ? ou não é preciso ?
+	    //if (fstop[n] == 1) for ... close(...)
+	}
 //##################FANOUT END ##########################
 
 
     //testar criar nodos
     char *test[3] = {"./const","./const","10"};
     char *test2[3] = {"./const","./const","20"};
-    create_node("1",test);
-    //create_node("2",test2);
-    create_node("1",test2); //erro ao criar
+    node("1",test);
+    node("2",test2);
+    node("1",test2); //erro ao criar
     printf("fiz os creates\n");
     return 0;
 }
