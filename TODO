@@ -1,13 +1,6 @@
 ######### filtros	
 
-- fazer readline para usar no controlador
-- não parar com readline EOF ?
-
-
 ####### controlador
-
-- readline para se aplicar em todos os reads
-- não parar com readline EOF ?
 
 $node
 - all done
@@ -17,11 +10,12 @@ $ connect
 - tem de se testar criando nodos para o fifo nao bloquear
 
 	:fannout
-	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo). connect 1 3 e depois connect 1 4, tem de se manter a saida para o 3 => connect 1 3 4 - specificacação incremental da rede
+	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo). connect 1 3 e depois connect 1 4, tem de se manter a saida para o 3 => connect 1 3 4 
+	já tem comentado o "algoritmo".
 	-
 
 $ disconnect
-- ao remover nodo remover os fifos
+- deveria funcionar só com 1, não sei se o problema é com o kill ou quê, disconnect de um nodo que tem mais que um output está a dar segmentation fault ao ler do array e não consigo perceber o porquê.
 
 $ inject
 
