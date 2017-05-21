@@ -6,42 +6,19 @@
 #include <stdlib.h>   // atoi
 #include <limits.h> //PIPE_BUF
 #include <signal.h> //sinais
-//#include <glib.h>     // linked list
 
-#define MAX_SIZE 1024
-
-//GSList* network = NULL;
-
-
-void fanin(int in[], int n, int out) {}
-
-
+#define MAX_SIZE 2048
 /*
 int exec_component(char** cmd)
 {
-    if (strcmp(cmd[0], "const") == 0) {
-        const(&cmd[1]); // falta corrigir isto
-    }
-
-    else if (strcmp(cmd[0], "filter") == 0) {
-        filter(&cmd[1]); // falta corrigir isto
-    }
-
-    else if (strcmp(cmd[0], "window") == 0) {
-        window(&cmd[1]); // falta corrigir isto
-    }
-
-    else if (strcmp(cmd[0], "spawn") == 0) {
-        spawn(&cmd[1]); // falta corrigir isto
-    }
-
-    else { // Componente não existe 
-        return 1;
-    }
-
+    if (strcmp(cmd[0], "const") == 0) { const(&cmd[1]);  } // falta corrigir isto    
+    else if (strcmp(cmd[0], "filter") == 0) { filter(&cmd[1]); } // falta corrigir isto
+    else if (strcmp(cmd[0], "window") == 0) {   window(&cmd[1]); } // falta corrigir isto
+    else if (strcmp(cmd[0], "spawn") == 0) {   spawn(&cmd[1]);  } // falta corrigir isto
+    else { return 1 } // Componente não existe 
     return 0;    
 }
-*/
+
 // node 1 windows 2 avg 10
 // options[0] = "node"
 // options[1] = "1"
@@ -49,46 +26,8 @@ int exec_component(char** cmd)
 // options[3] = "2"
 // options[4] = "avg"
 // options[5] = "10"
-
-/*
-int connect(char** options)
-{
-    // connect 2 3 5
-    // options[0] = "connect"
-    // options[1] = "2"
-    // options[2] = "3"
-    // options[3] = "5"
-
-    // 2->out acrescentar {3, 5}
-    // 3->in acrescentar {2}
-    // 5->in acrescentar {2}
-
-
-
-    // comunicar mudanças aos nós
-
-    //add_connections(network, connections);
-}
-
-int disconnect(char** options)
-{
-    // disconnect 2 3
-    // options[0] = "disconnect"
-    // options[1] = "2"
-    // options[2] = "3"
-
-    int i;
-    char* connections = "";
-
-    for (i = 1; options[i] != NULL; i++) {
-        strcat(connections, options[i]);
-        strcat(connections, " ");
-    }
-
-    //close_connections(network, connections);
-}
 */
-int inject(char** options) {  }
+//int inject(char** options) {  }
 /*
 int interpretador(char* cmdline)
 {
@@ -97,29 +36,13 @@ int interpretador(char* cmdline)
 
     options[i] = strtok(cmdline, " ");
 
-    while (options[i] != NULL) {
-        options[++i] = strtok(NULL, " ");
-    }
+    while (options[i] != NULL) { options[++i] = strtok(NULL, " "); }
 
-    if (strcmp(options[0], "node") == 0) {
-       return node(options);
-    }
-
-    else if (strcmp(options[0], "connect") == 0) {
-        return connect(options);
-    }
-
-    else if (strcmp(options[0], "disconnect") == 0) {
-        return disconnect(options);
-    }
-
-    else if (strcmp(options[0], "inject") == 0) {
-        return inject(options);
-    }
-
-    else { // Comando não existe 
-        return 1;
-    }
+    if (strcmp(options[0], "node") == 0) { return node(options); }
+    else if (strcmp(options[0], "connect") == 0) { return connect(options); }
+	else if (strcmp(options[0], "disconnect") == 0) { return disconnect(options); }
+	else if (strcmp(options[0], "inject") == 0) { return inject(options); }
+	else {  return 1; } // Comando não existe
 
     return 0;
 }
@@ -271,7 +194,7 @@ void inject(char *nodo, char *args[]) {
 	//verificar se nodo existe e dar erro?
 
 	//fork, redirect output para fifo nodo, só isto?
-	
+
 }
 
 
