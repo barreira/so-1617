@@ -221,6 +221,7 @@ void inject(char *nodo, char *args[]) {
     if(fdin < 1) perror("Falhou o open no fanout");
     else write(fdin,"teste",5); */
     connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3, quantidade de nodos
+    disconnect("1","2"); //desconectar os o 2 do 1.
     printf("connect feito, inserir colunas de teste:\n");
     
     //simular injfect nodo1
