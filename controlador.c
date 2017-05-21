@@ -189,6 +189,8 @@ int main(int argc, char* argv[]) {
 	int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
 	int fin[MAX_SIZE]; //fanout fnum in
 	for(i=0;i<MAX_SIZE;i++) { fstop[i] = 0 ; fin[i] = 0; } // não há nodo 0  zerar runs e fin
+	int fnouts[MAX_SIZE]; //numero de outs por fan - fnum 
+	char fouts[MAX_SIZE]; //os outs daquele fan - fnum
 
 	//função signal para a fanout
 	void stopfan(int n) { fstop[n] = 1; } //fanout n para parar na próxima iteração
@@ -221,8 +223,11 @@ int main(int argc, char* argv[]) {
 	            write(prints[i], buffer, bytes);
 	        }
 	    }
-	    //fechar fifos escrita/leitura ao receber signal para fstop ? ou não é preciso ?
+	    //fechar fifos escrita/leitura ao receber signal para fstop
 	    //if (fstop[n] == 1) for ... close(...)
+	    //fin[fnum] == 0; //tirar do input
+	    // (...)
+	    //exit() - apanhar o exit para executar o novo fanout
 	}
 //##################FANOUT END ##########################
 
@@ -234,17 +239,44 @@ int main(int argc, char* argv[]) {
 void connect(char *nodo, char *out[], int nouts) {
 		fnum++; //aumentar fnum
 		int a = atoi(nodo);
-		for(i=0;i<MAX_SIZE-1;i++) { //verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
+		//verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
+		//antes de matar, verificar os nouts e outputs e mante-los. aumentar nouts, out[] e etc.
+		for(i=0;i<MAX_SIZE-1;i++) { 
 			if(fin[i] == a) { kill(fpid[i],SIGUSR1); break; } 
 		}
+
 		//fork, correr fanout, guardar pid fannout para mandar signal
 		fpid[fnum] = fork();
 		if(fpid[fnum] == 0) {
 			fin[fnum] = a; //fannout num fnum recebe input nodo a
 			fanout(nodo, out, fnum, nouts); //criar fannout, fnum para usar no fstop
+			fnouts[fnum] = nouts; //guardar numero de outs
+			fouts[fnum] = out; //guardar outs
 		}
 	}
 // ############# CONNECT END ######################################
+
+// ########### DISCONNECT ##############################################
+// disconnect <id1> <id2>
+void disconnect(char *nodo, char *remover){
+	//verificar fannout que tem aquele input, ver os outputs totais, se >1, manter e remover o especificado, caso contrário enviar signal para matar aquele fanout.
+}
+
+// ########### DISCONNECT  END ############################################
+
+// ######### INJECT ###########################
+// inject <id> <cmd> <args...>
+
+void inject(char *nodo, char *args[]) {
+	//verificar se nodo existe e dar erro?
+
+	//fork, redirect output para fifo nodo, só isto?
+	
+}
+
+
+// ########## INJECT END #########################
+
 
 
     //testar criar nodos
@@ -262,10 +294,10 @@ void connect(char *nodo, char *out[], int nouts) {
     /*
     int fdin;
     mkfifo("/tmp/1out",0666);
-    fdin = open("/tmp/1out",O_RDONLY);//abrir fifo entrada leitura NAO TA A DAR!!!
+    fdin = open("/tmp/1out",O_RDONLY);//abrir fifo entrada leitura
     if(fdin < 1) perror("Falhou o open no fanout");
     else write(fdin,"teste",5); */
-    connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3
+    connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3, quantidade de nodos
     printf("connect feito, inserir colunas de teste:\n");
     
     //simular injfect nodo1
