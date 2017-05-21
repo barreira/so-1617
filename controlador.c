@@ -237,8 +237,8 @@ void disconnect(char *nodo, char *remover){
 	//só tem 1 out
 	else {
 		//ver PID do fanout
-		//printf("getfnum= %d Pid a matar: %d pid deste processo: %d\n",getfnum, fpid[getfnum],getpid());
-		kill(fpid[getfnum], SIGUSR1); //mandar parar na prox it
+		printf("Pid a matar: %d pid deste processo: %d\n", fpid[getfnum],getpid());
+		kill(fpid[getfnum], SIGUSR1); //mandar parar na prox it - É aqui que falha?
 		waitpid(fpid[getfnum],NULL,0); //esperar que termine
 		write(1,"Removido com sucesso\n",20); //mensagem de aviso com sucesso?
 	}
@@ -282,8 +282,8 @@ void inject(char *nodo, char *args[]) {
     fdin = open("/tmp/1out",O_RDONLY);//abrir fifo entrada leitura
     if(fdin < 1) perror("Falhou o open no fanout");
     else write(fdin,"teste",5); */
-    connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3, quantidade de nodos
-    //connect("1",saida,1); //connectar output nodo 1 ao input nodo 3
+    //connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3, quantidade de nodos
+    connect("1",saida,1); //connectar output nodo 1 ao input nodo 3
     //connect("1",)
     //disconnect("1","2"); //desconectar os o 2 do 1.
     //printf("connect feito, inserir colunas de teste:\n");
