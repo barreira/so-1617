@@ -8,6 +8,9 @@
 #include <signal.h> //sinais
 
 #define MAX_SIZE 2048
+int stop;
+
+//int FANTOKILL; //global para matar fanout
 /*
 int exec_component(char** cmd)
 {
@@ -63,7 +66,9 @@ int main(int argc, char* argv[]) {
     /*
     //loop leitura de comandos
     while(1) {
-        while((n = read(0, buffer, MAX_SIZE)) > 0 ) {
+   		while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
+      		if(n!=0) { //não parar com EOF
+      			}
             interpretador(buffer);
         }
     }
@@ -88,7 +93,7 @@ int main(int argc, char* argv[]) {
             int fdi,fdo;
             sprintf(in,"./tmp/%sin",num); // Nin
             if(!option) sprintf(out,"./tmp/%sout",num); //Nout
-            printf("valor de in: %s e valor de out: %s\n",in, out);
+            //printf("valor de in: %s e valor de out: %s\n",in, out);
             if(mkfifo(in, 0666) == -1) { perror("fifo in falhou"); } 
             if(!option) { if(mkfifo(out, 0666) == -1) { perror("fifo out falhou"); } }
             fdi = open(in,O_RDONLY); //fifo leitura
@@ -109,24 +114,25 @@ int main(int argc, char* argv[]) {
 	//inicializações fanout
 	int fnum = 0; //contador de fanout(s)
 	int fpid[MAX_SIZE]; //pids fanout
-	int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
+	//int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
 	int fin[MAX_SIZE]; //fanout fnum in
-	for(i=0;i<MAX_SIZE;i++) { fstop[i] = 0 ; fin[i] = 0; } // não há nodo 0  zerar runs e fin
+	for(i=0;i<MAX_SIZE;i++) { fin[i] = 0; } // não há nodo 0  zerar runs e fin //fstop[i] = 0 ; 
 	int fnouts[MAX_SIZE]; //numero de outs por fan - fnum 
-	char fouts[MAX_SIZE]; //os outs daquele fan - fnum
+	char fouts[MAX_SIZE][10]; //os outs daquele fan - fnum, Max de 10 outs.
 
-	//função signal para a fanout
-	void stopfan(int n) { fstop[n] = 1; } //fanout n para parar na próxima iteração
+//função signal para a fanout
+void stopfan() { stop = 1; } //fanout n para parar na próxima iteração
 
 
 // #### FANOUT ###############################
 
 	void fanout(char *input, char *outputs[], int n, int outs) {// in = fifo in , out = fifo(s) out, n = fnum number, outs = numero de saidas
 
-	    signal(SIGUSR1, stopfan); //pára o fanout na próxima iteração, inicio da main ?
+	    signal(SIGUSR1, stopfan); //pára o fanout na próxima iteração
 	    char inp[15],outp[15];
 		int bytes,i,fdin,prints[outs];
 	    char buffer[MAX_SIZE];
+	    int stop = 0;
 	    //input
 	    sprintf(inp,"./tmp/%sout",input); // output do nodo input
 	    //write(1,"Vou abrir input:\n",16);
@@ -139,7 +145,7 @@ int main(int argc, char* argv[]) {
 	    	if(prints[i] < 1) perror("Falhou o open no fanout");
 	    	}
 	    //loop leitura e escrita em todos os outputs
-	    while ((bytes = read(fdin, buffer, PIPE_BUF)) > 0 && (fstop[n] == 0)) {
+	    while ((bytes = read(fdin, buffer, PIPE_BUF)) > 0 && (stop == 0)) {
 	    	//readline
 	        // faz os writes em todos os outputs (prints[])
 	        for (i = 0; i < outs; i++) {
@@ -154,6 +160,8 @@ int main(int argc, char* argv[]) {
 	}
 //##################FANOUT END ##########################
 
+
+
 // ########### CONNECT ##############################################
 //connect nodoX nodo(s)
 //connect 1 2
@@ -163,19 +171,25 @@ void connect(char *nodo, char *out[], int nouts) {
 		fnum++; //aumentar fnum
 		int a = atoi(nodo);
 		//verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
-		//antes de matar, verificar os nouts e outputs e mante-los. aumentar nouts, out[] e etc.
+		//antes de matar, verificar os nouts e outputs e mante-los. aumentar nouts, out[] e etc. TODO
 		for(i=0;i<MAX_SIZE-1;i++) { 
 			if(fin[i] == a) { kill(fpid[i],SIGUSR1); break; } 
 		}
 
+
 		//fork, correr fanout, guardar pid fannout para mandar signal
 		fpid[fnum] = fork();
 		if(fpid[fnum] == 0) {
-			fin[fnum] = a; //fannout num fnum recebe input nodo a
-			fanout(nodo, out, fnum, nouts); //criar fannout, fnum para usar no fstop
-			fnouts[fnum] = nouts; //guardar numero de outs
-			fouts[fnum] = out; //guardar outs
+			fanout(nodo, out, fnum, nouts); //criar fannout, fnum para usar no fstop	
 		}
+		fin[fnum] = a; //fannout num fnum recebe input nodo a
+		fnouts[fnum] = nouts; //guardar numero de outs
+		for(i=0;i<nouts;i++) {
+				fouts[fnum][i] = out[i];
+			}
+		//char *lixo[100];
+		//sprintf(lixo,"fannout com fpid %d, fnum= %d e fin[fnum]= %d a= %d fin[1] = %d\n", fpid[fnum],fnum, fin[fnum],a, fin[1]);
+		//write(1,lixo,strlen(lixo));
 	}
 // ############# CONNECT END ######################################
 
@@ -183,6 +197,52 @@ void connect(char *nodo, char *out[], int nouts) {
 // disconnect <id1> <id2>
 void disconnect(char *nodo, char *remover){
 	//verificar fannout que tem aquele input, ver os outputs totais, se >1, manter e remover o especificado, caso contrário enviar signal para matar aquele fanout.
+	int getfnum = 0; //assume-se que o nodo existe e não existe nodo 0.
+	int a = atoi(nodo);
+	int nouts;
+
+
+	for(i=0;i<MAX_SIZE-1;i++) { 
+		if (fin[i] == a) { getfnum = a; break; }//não é preciso continuar o ciclo :) }
+	}
+
+
+	//mais de 1 out
+
+	if(fnouts[getfnum] > 1) { 
+		nouts = fnouts[getfnum]; //numero de outs
+		char *outs[10];
+		//char *tmp[nouts];
+		//tmp = fouts[getfnum]; //- TA A DAR WARNING, porquê ?
+		//passar os outs sem o que se tem de remover
+		//char *lixo[100];
+		//sprintf(lixo, "valor de nouts: %d e de fouts[getfnum][0]: %s\n", nouts, fouts[getfnum][i]);
+		//write(1,lixo,strlen(lixo));
+		int m =0;
+		//ESTA AQUI A DAR SEGMENTATION FAULT!!!! ao tentar copiar os valores, nao consigo descobrir o porquê
+		for(i=0;i<nouts;i++) {
+			//printf("i chegou= %d e %s \n",m,fouts[getfnum][0]);
+			if(strcmp(fouts[getfnum][i],nodo) != 0) { outs[m] = fouts[getfnum][i];  m++ ; }
+			//printf("fiz a atribuicao %d\n",m);
+	
+		}
+		
+		nouts--; //remover 1 ao total de outs
+		kill(fpid[getfnum], SIGUSR1); //mandar parar na prox it
+		waitpid(fpid[getfnum],NULL,0); //esperar que termine
+		write(1,"Removido com sucesso\n",20); //mensagem de aviso com sucesso?
+		//fazer novo connect (seria repetir parte do codigo do connect)
+		connect(nodo, outs, nouts);
+	}
+	//só tem 1 out
+	else {
+		//ver PID do fanout
+		//printf("getfnum= %d Pid a matar: %d pid deste processo: %d\n",getfnum, fpid[getfnum],getpid());
+		kill(fpid[getfnum], SIGUSR1); //mandar parar na prox it
+		waitpid(fpid[getfnum],NULL,0); //esperar que termine
+		write(1,"Removido com sucesso\n",20); //mensagem de aviso com sucesso?
+	}
+
 }
 
 // ########### DISCONNECT  END ############################################
@@ -206,6 +266,8 @@ void inject(char *nodo, char *args[]) {
     char *test[2] = {"./const","10"};
     char *test2[3] = {"./const","20"};
     char *saidas[2] = {"2","3"};
+    char *saida[1] = {"3"};
+    char *x[1] = {"2"};
     //execvp(test[0],test);
 
     node("1",test,0);
@@ -221,13 +283,16 @@ void inject(char *nodo, char *args[]) {
     if(fdin < 1) perror("Falhou o open no fanout");
     else write(fdin,"teste",5); */
     connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3, quantidade de nodos
-    disconnect("1","2"); //desconectar os o 2 do 1.
-    printf("connect feito, inserir colunas de teste:\n");
+    //connect("1",saida,1); //connectar output nodo 1 ao input nodo 3
+    //connect("1",)
+    //disconnect("1","2"); //desconectar os o 2 do 1.
+    //printf("connect feito, inserir colunas de teste:\n");
     
     //simular injfect nodo1
     int fdt = open("./tmp/1in",O_WRONLY);
-    while((n=read(0,buffer,PIPE_BUF))>0) {
-    	write(fdt,buffer,n);
+    while((n=read(0,buffer,PIPE_BUF))>=0) {
+    	if(n == 0) { write(1,"vou fazer disconnect\n",20); disconnect("1","3"); } //ctrl+d para eof
+    	else write(fdt,buffer,n);
     }
     return 0;
 }
