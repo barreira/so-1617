@@ -17,7 +17,8 @@ $ connect
 - tem de se testar criando nodos para o fifo nao bloquear
 
 	:fannout
-	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo)
+	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo). connect 1 3 e depois connect 1 4, tem de se manter a saida para o 3 => connect 1 3 4 - specificacação incremental da rede
+	-
 
 $ disconnect
 - ao remover nodo remover os fifos
