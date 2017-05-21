@@ -14,10 +14,12 @@ Este programa reproduz as linhas que satisfazem uma condicão indicada nos seus 
 
 ./a.out coluna "condição" valor-de-comparação
 
-input: a:5:c "<=" 10
+filter 2 "<=" 10
+input: a:5:c 
 output: a:5:c
 
-input a:10:c ">" 20
+filter 2 ">" 20
+input a:10:c 
 output:
 
 */
@@ -30,24 +32,27 @@ int main(int argc, char const *argv[]){
    int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut;
    char field[10];
    
-   while((n = read(0,buffer,PIPE_BUF))) {      
-      //Achar a coluna
-      char *ptr = buffer;
-      cut = 0;
-      while ( sscanf(ptr, "%10[^:]%n", field, &s) == 1) {
-         cut++;
-         if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
-         ptr += s; /* avançar os characteres lidos */
-         //if ( *ptr != ':' )  {  break; /* falhou*/  }
-         ++ptr; /* salta o : */
+   while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
+      if(n!=0) {     
+         //Achar a coluna
+         char *ptr = buffer;
+         cut = 0;
+         while ( sscanf(ptr, "%10[^:]%n", field, &s) == 1) {
+            cut++;
+            if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
+            ptr += s; /* avançar os characteres lidos */
+            //if ( *ptr != ':' )  {  break; /* falhou*/  }
+            ++ptr; /* salta o : */
+         }
+
+      //verifica o argumento e faz a comparação
+      if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,buffer,n);  } 
+      if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,buffer,n); } 
+      if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,buffer,n); }
+      if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,buffer,n); } 
+      if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,buffer,n); }
+      if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
       }
-   //verifica o argumento e faz a comparação
-   if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,buffer,n);  } 
-   if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,buffer,n); } 
-   if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,buffer,n); }
-   if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,buffer,n); } 
-   if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,buffer,n); }
-   if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
    }
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar

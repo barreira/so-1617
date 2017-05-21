@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
+#include "readline.h" //myreadline
 
 /*window <coluna> <operacao> <linhas>
 Este programa reproduz todas as linhas acrescentando-lhe uma nova coluna com o resultado de uma
@@ -101,7 +102,8 @@ int main(int argc, char const *argv[]){
 		stored[0] = a;
 	}
 
-   while((n = read(0,buffer,PIPE_BUF))) {      
+   while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
+      if(n!=0) {     
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
@@ -118,7 +120,7 @@ int main(int argc, char const *argv[]){
       buffer[n-1] = '\0'; //tirar /n
 	  sprintf(final,"%s:%i\n",buffer,res); //acrescentar resultado fim da linha
 	  write(1,final,strlen(final));
-
+	}
   }
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
