@@ -1,14 +1,21 @@
-#include ...
+#include <stdio.h>    // perror
+#include <sys/stat.h> // mkfifo
+#include <fcntl.h>    // open
+#include <unistd.h>   // read
+#include <string.h>   // strcmp, strtok
+#include <stdlib.h>   // atoi
+#include <limits.h>   // PIPE_BUF
+#include <signal.h>   // sinais
 
 #define MAX_SIZE 1024
 
 /* Variáveis globais */
 
-int nodes[MAX_SIZE];
-int nodespid[MAX_SIZE];
+int nodes[MAX_SIZE];    // array que indica se nó existe na rede
+int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
-int numconnects;
-Fanout connections[MAX_SIZE]; // nó do input corresponderia ao indice deste array
+int numconnects;              // contador de processos de conexão
+Fanout connections[MAX_SIZE]; // array com 
 
 typedef struct fanout {
     int pid;            // pid do fanout
@@ -46,10 +53,9 @@ void stop_fanout()
     stopfan = 1;
 }
 
-// void fanout(int n, Fanout f) ?
 void fanout(int input, int outputs[], int numouts)
 {
-    int i, fdi, fdos[numouts], bytes, stop = 0;
+    int i, fdi, fdos[numouts], bytes;
     char in[15], out[15], buffer[MAX_SIZE];
 
     signal(SIGUSR1, stop_fanout);
@@ -130,7 +136,6 @@ int node(char** options, int flag)
     return 0;
 }
 
-// e.g. connect 2 4 7
 int connect(char** options, int numoptions)
 {
     int i, j = 0;
@@ -140,6 +145,9 @@ int connect(char** options, int numoptions)
 
     n = atoi(options[1]);
 
+    // Verifica-se se já existia conexão a partir daquele nó
+    // Se sim, mata conexão. Se não, aumenta o número total de conexões.
+
     if (connections[n] != NULL) {
         kill(connections[n]->pid, SIGUSR1);
     }
@@ -147,15 +155,21 @@ int connect(char** options, int numoptions)
         numconnects++;
     }
 
+    // Constroi o array de nós do output
+
     for (i = 2; i < numoptions; i++) {
         outs[++j] = atoi(options[i]);
     }
+
+    // Cria processo da conexão e põe-no a fazer fanout
 
     pid = fork();
 
     if (pid == 0) {
         fanout(n, outs, numouts);
     }
+
+    // Cria o fanout (struct) e adiciona-o à lista das conexões
 
     f = create_fanout(pid, outs, numouts);
     connections[n] = f;
