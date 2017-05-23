@@ -139,6 +139,7 @@ int connect(char** options, int numoptions)
 
     // Verifica-se se já existia conexão a partir daquele nó
     // Se sim, mata conexão copia saidas e faz um novo fannout com a informação adicional
+    // não está a verificar loops
     /* Quando existe um fannout a ler daquele input */
     if (connections[n] != NULL) { //já existe um fannout a ler desse nodo
     	int tmpouts[20];
