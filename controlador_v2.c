@@ -7,25 +7,71 @@
 int nodes[MAX_SIZE];
 int nodespid[MAX_SIZE];
 
+int numconnects;
+Fanout connections[MAX_SIZE]; // nó do input corresponderia ao indice deste array
+
+typedef struct fanout {
+    int pid;            // pid do fanout
+    int outs[MAX_SIZE]; // IDs dos nós do output
+    int numouts;        // número de nós de output
+} Fanout;
+
 void init_network()
 {
     int i;
 
     for (i = 0; i < MAX_SIZE; i++) {
         nodes[i] = -1;
+        connections[i] = NULL;
     }
 }
 
 /* Funções auxiliares */
 
-void fanout()
+Fanout create_fanout(int pid, int* outs, int numouts)
 {
+    Fanout f = malloc(sizeof(struct fanout));
+    
+    f->pid = pid;
+    f->outs = outs;
+    f->numouts = numouts;
 
+    return f;
+}
+
+int stopfan = 0;
+
+void stop_fanout()
+{
+    stopfan = 1;
+}
+
+// void fanout(int n, Fanout f) ?
+void fanout(int input, int outputs[], int numouts)
+{
+    int i, fdi, fdos[numouts], bytes, stop = 0;
+    char in[15], out[15], buffer[MAX_SIZE];
+
+    signal(SIGUSR1, stop_fanout);
+
+    sprintf(in, "./tmp/%sout", input);
+
+    fdi = open(in, O_RDONLY);
+    
+    for (i = 0; i < numouts; i++) {
+        sprintf(out, "./tmp/%sin", outputs[i]);
+	    fdos[i] = open(out, O_WRONLY);
+    }
+
+    while ((bytes = read(fdi, buffer, PIPE_BUF)) > 0 && !stopfan) {
+        for (i = 0; i < numouts; i++) {
+            write(fdos[i], buffer, bytes);
+        }
+    }
 }
 
 /* Comandos do controlador */
 
-// e.g. node 1 window 2 avg 10
 int node(char** options, int flag)
 {
     int n;
@@ -84,9 +130,37 @@ int node(char** options, int flag)
     return 0;
 }
 
-int connect(char** options)
+// e.g. connect 2 4 7
+int connect(char** options, int numoptions)
 {
+    int i, j = 0;
+    int numouts = numoptions - 2;
+    int n, pid, numouts, outs[numouts];
+    Fanout f;
 
+    n = atoi(options[1]);
+
+    if (connections[n] != NULL) {
+        kill(connections[n]->pid, SIGUSR1);
+    }
+    else {
+        numconnects++;
+    }
+
+    for (i = 2; i < numoptions; i++) {
+        outs[++j] = atoi(options[i]);
+    }
+
+    pid = fork();
+
+    if (pid == 0) {
+        fanout(n, outs, numouts);
+    }
+
+    f = create_fanout(pid, outs, numouts);
+    connections[n] = f;
+
+    return 0;
 }
 
 int disconnect(char** options)
@@ -117,7 +191,7 @@ int interpretador(char* cmdline)
     }
 
     else if (strcmp(options[0], "connect") == 0) {
-        return connect(options);
+        return connect(options, i);
     }
 
     else if (strcmp(options[0], "disconnect") == 0) {
@@ -137,22 +211,14 @@ int interpretador(char* cmdline)
 
 int main(int argc, char* argv[])
 {
-    int fd;
+    init_network();
 
     if (argc == 2) {
         // ler ficheiro de configuração
     }
 
-    mkfifo("fifo", 0666);
-
-    fd = open("fifo", O_RDONLY);
-
-    init_network();
-
-    while (1) {
-        while (read(fd, buffer, MAX_SIZE) > 0) {
-            interpretador(buffer);
-        }
+    while (read(0, buffer, MAX_SIZE) > 0) {
+        interpretador(buffer);
     }
 
     return 0;
