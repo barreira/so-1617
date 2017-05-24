@@ -8,8 +8,8 @@
 #include <signal.h>   // sinais
 #include <sys/wait.h> // wait
 
-#define MAX_SIZE 1024
-
+#define MAX_SIZE PIPE_BUF
+//########## PIPE_BUF
 
 /******************************************************************************
  *                           VARIÁVEIS GLOBAIS                                *
@@ -75,7 +75,7 @@ ssize_t readln(int fildes, void *buf, size_t nbyte) {
 	for (i=0; i < nbyte; i++) {
 		n = read(fildes, buf+i, 1);
 
-		if (n == -1) return -1;
+		if (n == -1) return -1; //########## aqui não pode dar -1 ou o interpretador pára. certo?
 
 		if (n == 0) break;
 
@@ -143,20 +143,32 @@ void fanout(int input, int outputs[], int numouts)
 
     sprintf(aux, "%d", input);
     sprintf(in, "./tmp/%sout", aux);
-
+    printf("Vou abrir o fifo de input do fannout: %s \n",in);
     fdi = open(in, O_RDONLY);
     
-    if (fdi == -1) perror("open");
+    if (fdi == -1) perror("open fifo in fanout");
 
     // Abrir FIFOs de saída
 
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
+        printf("Vou abrir as saidas fifo out do fanout: %s \n",out);
 	    fdos[i] = open(out, O_WRONLY);
-	    if (fdos[i] == -1) perror("open");
+	    if (fdos[i] == -1) perror("open fifo out fanout");
     }
-    
+    /* 
+    connect 1 2 3
+Vou abrir o fifo de input do fannout: ./tmp/1out 
+Vou abrir as saidas fifo out do fanout: ./tmp/0in 
+open fifo out fanout: No such file or directory
+Vou abrir as saidas fifo out do fanout: ./tmp/2in 
+Vou abrir as saidas fifo out do fanout: ./tmp/0in 
+open fifo out fanout: No such file or directory
+Vou abrir as saidas fifo out do fanout: ./tmp/2in 
+
+deveria abrir o 2 e 3 in
+*/
     // Escrever nos FIFOs de saída
 
     while ((bytes = read(fdi, buffer, PIPE_BUF)) > 0 && !stopfan) {
@@ -186,6 +198,8 @@ void fanout(int input, int outputs[], int numouts)
  *
  * @return 0 em caso de sucesso ou 1 em caso de erro
  */
+
+//######### criar nodo sem output, exec das options sem alterar
 int node(char** options, int flag)
 {
     int n;
@@ -193,8 +207,8 @@ int node(char** options, int flag)
     /* Verificar se o nó já existe na rede */
 
     n = atoi(options[1]); // nó de entrada
-
-    if (nodes[n] != -1) {
+    printf("valor de options[1]: %s \n",options[1]);
+    if (nodes[n] != 0) {
         printf("Já existe nó com ID %d\n", n);
         return 1;
     }
@@ -203,7 +217,7 @@ int node(char** options, int flag)
 
     nodespid[n] = fork();
     
-    if (nodespid[n] == -1) perror("fork");
+    if (nodespid[n] == -1) perror("fork no node");
     
     if (nodespid[n] == 0) {
         
@@ -212,29 +226,32 @@ int node(char** options, int flag)
         char in[15], out[15];
         int fdi, fdo;
 
-        sprintf(in, "./tmp/%sin", options[1]);
-        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); }
+        sprintf(in, "./tmp/%sin", options[1]); //###########está a escrever lixo
+        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); } //##########está a escrever lixo
 
         mkfifo(in, 0666);
-        if (!flag) { mkfifo(out, 0666); }
+        if (!flag) { mkfifo(out, 0666); } //#########descartar output, faz-se na mesma para depois ao remover não dar erro?
         
+
         fdi = open(in, O_RDONLY);
-        if (!flag) { fdo = open(out, O_WRONLY); }
+
+        if (!flag) { fdo = open(out, O_WRONLY); } //#######descartar output, faz-se na mesma para depois ao remover não dar erro?
         
         /* Redirecionar para os FIFOs */
 
         dup2(fdi, 0);
-        if (!flag) { dup2(fdo, 1); }
+        if (!flag) { dup2(fdo, 1); } //este tem de ficar sempre.
         
         /* Executar o componente */
-
-        execvp(options[2], &options[3]);
+        //########### ao passar o componente tem de se por o ./ no options[2]
+        //execvp(options[2], &options[3]);
+        execlp("./const","./const","10",NULL);
     }
     
     /* Acrescentar nó à rede */   
 
     nodes[n] = 1;
-
+    write(1,"Node Criado com sucesso\n",25);
     return 0;
 }
 
@@ -284,7 +301,7 @@ int connect(char** options, int numoptions)
 
     pid = fork();
 
-    if (pid == -1) perror("fork");
+    if (pid == -1) perror("fork no connect");
     
     if (pid == 0) {     
         fanout(n, outs, numouts);
@@ -358,8 +375,7 @@ int disconnect(char** options)
             connections[a] = NULL;
 
             pid == fork();
-
-            if (pid == -1) perror("fork");
+            if (pid == -1) perror("fork no node");
 
             if (pid == 0) {     
                 fanout(a, outs, numouts);
@@ -388,6 +404,8 @@ int disconnect(char** options)
  *
  * @return 0 em caso de sucesso ou 1 em caso de erro
  */
+
+// ###### Falta adicionar o envio dum sinal a todos os nodos para tirar do pause.
 int inject(char** options)
 {
     int fd, pid;
@@ -412,6 +430,55 @@ int inject(char** options)
     return 0;
 }
 
+/* remove um nodo 
+remove um nodo da rede
+vai verificar se está a receber algum output ou se é a fonte de algum input e se for o caso remove dessa rede
+*/
+/*
+int remove(char** options) {
+
+    int i,in[10],out[10],t=0, ntmp,j,pid;
+    char *tempin[10], *tempout[10];
+    int a = atoi(options[1]); //########### é o [1] ?
+    //ver se tem in e/ou out no fanout
+    if (connections[a] != NULL) { 
+        //se sim, in: remover fanout
+        kill(connections[a]->pid, SIGUSR1);
+        waitpid(connections[a]->pid, NULL, 0);
+        connections[a] = NULL; 
+    } 
+    // verificar em todos os outs
+    for(i=0;i<MAX_SIZE;i++) {
+        if (connections[i] != NULL) { 
+            ntemp = connections[i]->numouts;
+            for(j=0;j<ntemp;j++) { //ver dentro dos outs
+                if(connections[i]->outs[j] == a) { 
+                //########remover do array aquele valor
+                //########matar fannout e criar nova
+                //out[++t] = connections[i]->outs[j] ; break } //só tem 1 out
+            }
+         } 
+    }
+
+    //remover os fifos e matar o node
+    sprintf(tempin,"./tmp/%sin",options[1]);
+    sprintf(tempout,"./tmp/%sout",options[1]);
+    if(fork()) { execlp("rm","rm",tempin); }
+    if(fork()) { execlp("rm","rm",tempout); }
+    kill(nodespid[a],SIGKILL);
+    node[a] = 0;
+}
+*/
+/* muda o filtro dum node */
+/*
+int change(char** options, int flag) {
+    a = atoi(options[1]); // ########## é 1 ?
+    //#######não é preciso fazer nada ao fanoout porque os processos estão em pause(); ?
+    remove(options[1]); //remover nodo - aqui são feitas as verificações todas
+    create_node(options[1], *options, flag); //criar o novo com a descartar ou não output.
+}
+
+*/
 
 /******************************************************************************
  *                      INTERPRETADOR DE COMANDOS                             *
@@ -439,8 +506,12 @@ int interpretador(char* cmdline)
 
     /* Interpreta qual o comando e invoca a função respetiva */
 
+    //############# se não for nenhum dos filtros, fazer node com flag a 1.
+    //####### add change e remove
+
     if (strcmp(options[0], "node") == 0) {
         return node(options, 0);
+        //int node(char** options, int flag)
     }
 
     else if (strcmp(options[0], "connect") == 0) {
@@ -482,7 +553,7 @@ int interpretador(char* cmdline)
  */
 int main(int argc, char* argv[])
 {
-    int fd;   
+    int fd,n;   
     char buffer[MAX_SIZE];
 
     /* Inicializa as variáveis globais da rede */
@@ -502,7 +573,11 @@ int main(int argc, char* argv[])
 
     /* Lê comandos do stdin até receber EOF (Ctrl-D) */
 
-    while (read(0, buffer, MAX_SIZE) > 0) {
+    //criar coisas para teste
+
+    write(1,"BEM VINDO AO MEGA GERENCIADOR DE REDES\n",39);
+    while ((n = read(0, buffer, MAX_SIZE)) > 0) {
+        buffer[n-1] = '\0';
         interpretador(buffer);
     }
 
