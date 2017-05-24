@@ -260,9 +260,29 @@ int disconnect(char** options)
     return 0;
 }
 
+// e.g. inject 1 ...
 int inject(char** options)
 {
-    
+    int fd, pid;
+    char in[15];
+
+    sprintf(in, "./tmp/%sin", options[1]);
+
+    fd = open(in, O_RDONLY);
+
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    pid = fork(); // é preciso guardar o pid nalgum lado?
+
+    if (pid == 0) {
+        dup2(fd, 1);
+        execvp(options[2], &options[3]);
+    }
+
+    return 0;
 }
 
 /* Interpretador de comandos */
