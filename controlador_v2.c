@@ -10,7 +10,10 @@
 
 #define MAX_SIZE 1024
 
-/* Variáveis globais */
+
+/******************************************************************************
+ *                           VARIÁVEIS GLOBAIS                                *
+ ******************************************************************************/
 
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
@@ -52,7 +55,10 @@ void init_network()
     }
 }
 
-/* Funções auxiliares */
+
+/******************************************************************************
+ *                          FUNÇÕES AUXILIARES                                *
+ ******************************************************************************/
 
 /*
  * @brief Lê uma linha
@@ -160,7 +166,10 @@ void fanout(int input, int outputs[], int numouts)
     }
 }
 
-/* Comandos do controlador */
+
+/******************************************************************************
+ *                        COMANDOS DO CONTROLADOR                             *
+ ******************************************************************************/
 
 /*
  * @brief Comando que adiciona um nó à rede
@@ -403,7 +412,10 @@ int inject(char** options)
     return 0;
 }
 
-/* Interpretador de comandos */
+
+/******************************************************************************
+ *                      INTERPRETADOR DE COMANDOS                             *
+ ******************************************************************************/
 
 /*
  * @brief Interpretador dos comandos do controlador
@@ -450,6 +462,10 @@ int interpretador(char* cmdline)
     return 0;
 }
 
+
+/******************************************************************************
+ *                                 MAIN                                       *
+ ******************************************************************************/
 
 /*
  * @brief Função main do controlador
