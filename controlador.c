@@ -4,303 +4,507 @@
 #include <unistd.h>   // read
 #include <string.h>   // strcmp, strtok
 #include <stdlib.h>   // atoi
-#include <limits.h> //PIPE_BUF
-#include <signal.h> //sinais
+#include <limits.h>   // PIPE_BUF
+#include <signal.h>   // sinais
+#include <sys/wait.h> // wait
 
-#define MAX_SIZE 2048
-int stop;
+#define MAX_SIZE 1024
 
-//int FANTOKILL; //global para matar fanout
+
+/******************************************************************************
+ *                           VARIÁVEIS GLOBAIS                                *
+ ******************************************************************************/
+
+int nodes[MAX_SIZE];    // array que indica se nó existe na rede
+int nodespid[MAX_SIZE]; // array com os PIDs dos nós
+
+int stopfan = 0; // serve para parar o fanout (conexão entre os nós) sem ser
+                 // necessário fazê-lo abruptamente (i.e. com SIGKILL)
+
 /*
-int exec_component(char** cmd)
+ * Estrutura que configura um fanout
+ */
+typedef struct fanout {
+    int pid;     // pid do fanout
+    int* outs;   // array de IDs dos nós do output
+    int numouts; // número de nós de output
+} *Fanout;
+
+/*
+ * Vetor de fanouts que corresponde ao conjunto de todas as conexões entre nós
+ * da rede. O índice deste array indica o ID do nó IN do fanout.
+ * 
+ * Se o fanout que tem o nó X como IN estiver ativo, a posição X do array é
+ * diferente de NULL e tem uma struct do tipo fanout, corresponde à conexão
+ * (fanout) que parte deste mesmo nó.
+ */
+Fanout connections[MAX_SIZE];
+                              
+/*
+ * @brief Inicializa as variáveis globais da rede
+ *
+ * Iniciliza os nós a 0 e as conexões a NULL.
+ */
+void init_network()
 {
-    if (strcmp(cmd[0], "const") == 0) { const(&cmd[1]);  } // falta corrigir isto    
-    else if (strcmp(cmd[0], "filter") == 0) { filter(&cmd[1]); } // falta corrigir isto
-    else if (strcmp(cmd[0], "window") == 0) {   window(&cmd[1]); } // falta corrigir isto
-    else if (strcmp(cmd[0], "spawn") == 0) {   spawn(&cmd[1]);  } // falta corrigir isto
-    else { return 1 } // Componente não existe 
-    return 0;    
+    int i;
+
+    for (i = 0; i < MAX_SIZE; i++) {
+        nodes[i] = 0;
+        connections[i] = NULL;
+    }
 }
 
-// node 1 windows 2 avg 10
-// options[0] = "node"
-// options[1] = "1"
-// options[2] = "windows"
-// options[3] = "2"
-// options[4] = "avg"
-// options[5] = "10"
-*/
-//int inject(char** options) {  }
+
+/******************************************************************************
+ *                          FUNÇÕES AUXILIARES                                *
+ ******************************************************************************/
+
 /*
+ * @brief Lê uma linha
+ *
+ * @param fildes Descritor de ficheiro de onde se lê
+ * @param buf    Buffer para onde se escreve os dados lidos
+ * @param nbyte  Número máximo de bytes a ler
+ *
+ * @return Retorna o número de bytes lidos
+ */
+ssize_t readln(int fildes, void *buf, size_t nbyte) {
+	int i, n;
+
+	for (i=0; i < nbyte; i++) {
+		n = read(fildes, buf+i, 1);
+
+		if (n == -1) return -1;
+
+		if (n == 0) break;
+
+		if (((char*)buf)[i] == '\n')
+			((char *)buf)[i] = '\0';
+	}
+
+	return ++i;
+}
+
+/*
+ * @brief Cria um Fanout (struct)
+ *
+ * @param pid     PID do processo que corre o fanout
+ * @param outs    Array com os IDs dos nós do output
+ * @param numouts Número de nós do output
+ */
+Fanout create_fanout(int pid, int* outs, int numouts)
+{
+    int i;
+    int* array;
+
+    Fanout f = malloc(sizeof(struct fanout));
+    array = malloc(sizeof(int) * numouts);
+
+    for (i = 0; i < numouts; i++) {
+        array[i] = outs[i];
+    }
+
+    f->pid = pid;
+    f->outs = array;
+    f->numouts = numouts;
+
+    return f;
+}
+
+/*
+ * @brief Coloca a variável global stopfan a 1
+ *
+ * Esta função é usada como handler do sinal SIGUSR1 recebido pelo processo que
+ * executa o fanout, fazendo com que este pare de executar (em alternativa a
+ * matar diretamente o processo).
+ */
+void stop_fanout()
+{
+    stopfan = 1;
+}
+
+/*
+ * @brief Executa um fanout
+ *
+ * Definimos como fanout uma função que recebe um input e repete o que conseguir
+ * ler desse input para um ou mais outputs recebidos como parâmetro.
+ *
+ * @param input   Input do fanout
+ * @param outputs Array com os outputs
+ * @param numouts Número de outputs
+ */
+void fanout(int input, int outputs[], int numouts)
+{
+    int i, fdi, fdos[numouts], bytes;
+    char in[15], out[15], buffer[MAX_SIZE], aux[5];
+
+    signal(SIGUSR1, stop_fanout);
+
+    sprintf(aux, "%d", input);
+    sprintf(in, "./tmp/%sout", aux);
+
+    fdi = open(in, O_RDONLY);
+    
+    if (fdi == -1) perror("open");
+
+    // Abrir FIFOs de saída
+
+    for (i = 0; i < numouts; i++) {
+        sprintf(aux, "%d", outputs[i]);
+        sprintf(out, "./tmp/%sin", aux);
+	    fdos[i] = open(out, O_WRONLY);
+	    if (fdos[i] == -1) perror("open");
+    }
+    
+    // Escrever nos FIFOs de saída
+
+    while ((bytes = read(fdi, buffer, PIPE_BUF)) > 0 && !stopfan) {
+        for (i = 0; i < numouts; i++) {
+            write(fdos[i], buffer, bytes);
+        }
+    }
+}
+
+
+/******************************************************************************
+ *                        COMANDOS DO CONTROLADOR                             *
+ ******************************************************************************/
+
+/*
+ * @brief Comando que adiciona um nó à rede
+ *
+ * Primeiro, esta função verifica se o nó já existe na rede (se não existir dá
+ * erro). Depois cria um processo filho para executar o componente/filtro, bem
+ * como dois FIFOs (pipes com nome) de entrada e saida de dados no nó. Os nomes
+ * destes pipes são "Xin" e "Xout" em que X é o ID do nó.
+ *
+ * Por fim, adiciona o nó criado à rede.
+ *
+ * @param options Array com os campos do comando (secções separadas por espaço)
+ * @param flag    Flag que indica se o output do nó deverá ser descartado
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
+int node(char** options, int flag)
+{
+    int n;
+
+    /* Verificar se o nó já existe na rede */
+
+    n = atoi(options[1]); // nó de entrada
+
+    if (nodes[n] != -1) {
+        printf("Já existe nó com ID %d\n", n);
+        return 1;
+    }
+
+    /* Criar filho para correr o componente */
+
+    nodespid[n] = fork();
+    
+    if (nodespid[n] == -1) perror("fork");
+    
+    if (nodespid[n] == 0) {
+        
+        /* Fazer FIFOs in e out e abri-los */
+
+        char in[15], out[15];
+        int fdi, fdo;
+
+        sprintf(in, "./tmp/%sin", options[1]);
+        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); }
+
+        mkfifo(in, 0666);
+        if (!flag) { mkfifo(out, 0666); }
+        
+        fdi = open(in, O_RDONLY);
+        if (!flag) { fdo = open(out, O_WRONLY); }
+        
+        /* Redirecionar para os FIFOs */
+
+        dup2(fdi, 0);
+        if (!flag) { dup2(fdo, 1); }
+        
+        /* Executar o componente */
+
+        execvp(options[2], &options[3]);
+    }
+    
+    /* Acrescentar nó à rede */   
+
+    nodes[n] = 1;
+
+    return 0;
+}
+
+/*
+ * @brief Comando que faz a conexão entre dois ou mais nós da rede
+ *
+ * Primeiro verifica se já existia uma conexão cujo IN seja igual ao recebido em
+ * options. Em caso afirmativo, guarda os IDs dos nós do output dessa conexão e
+ * mata a conexão.
+ * 
+ * Em todos os casos (caso existisse ou não uma conexão anterior), são
+ * adicionados os nós de output recebidos (em options) e é criada uma nova
+ * conexão que liga os nós recebidos (mais os nós pré-existentes, caso seja esse
+ * o caso).
+ *
+ * @param options    Array com campos do comando (secções separadas por espaço)
+ * @param numoptions Tamanho do array com os campos do comando (options)
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro 
+ */
+int connect(char** options, int numoptions)
+{
+    int i, j = 0, n, pid, numouts;
+    Fanout f;
+
+    n = atoi(options[1]);
+
+    numouts = numoptions - 2;
+    int outs[numouts];
+
+    if (connections[n] != NULL) {
+        numouts += connections[n]->numouts;
+        int outs[numouts];
+
+        for (i = 0; i < connections[n]->numouts; i++) {
+        	outs[++j] = connections[n]->outs[i];
+   		}
+
+        kill(connections[n]->pid, SIGUSR1);
+        waitpid(connections[n]->pid, NULL, 0);
+        connections[n] = NULL;
+    }
+    
+    for (i = 2; i < numoptions; i++) {
+        outs[++j] = atoi(options[i]);
+    }
+
+    pid = fork();
+
+    if (pid == -1) perror("fork");
+    
+    if (pid == 0) {     
+        fanout(n, outs, numouts);
+    }
+    else {
+        f = create_fanout(pid, outs, numouts);
+        connections[n] = f;
+    }
+
+    return 0;
+}
+
+/*
+ * @brief Comando que desfaz a conexão entre dois nós da rede
+ *
+ * Primeiro verifica se existia alguma conexão para o IN recebido em options
+ * (caso não haja é retornado erro). Depois, verifica se esse IN tem o OUT
+ * recebido em options como output (caso não tenha é retornado erro). Após isso,
+ * se apenas houver esse OUT na conexão pré-existente, então essa conexão é
+ * terminada e a função termina. Caso contrário, são guardados os restantes outs
+ * da conexão pré-existente e é criada uma nova conexão com apenas esses outs
+ * (e sem o OUT retirado).
+ *
+ * @param options Array com os campos do comando (secções separadas por espaço)
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
+int disconnect(char** options)
+{
+    int a, b, exists = 0, numouts, i, j = 0, pid;
+    Fanout f;
+
+    a = atoi(options[1]);
+    b = atoi(options[2]);
+
+    // Verificar se existe alguma conexão para o IN (a) recebido
+
+    if (connections[a] != NULL) {
+        
+        numouts = connections[a]->numouts;
+
+        // Verificar se a conexão tem OUT (b) como saída
+
+        for (i = 0; i < numouts; i++) {
+            if (connections[a]->outs[i] == b) {
+                exists = 1;
+            }
+        }
+
+        if (!exists) { // A conexão não tem OUT (b) com saída
+            return 1;
+        }
+
+        if (numouts == 1) {
+            kill(connections[a]->pid, SIGUSR1);
+            waitpid(connections[a]->pid, NULL, 0);
+            connections[a] = NULL;         
+            return 0;
+        }
+        else {
+            int outs[numouts--];
+
+            for (i = 0; i < connections[a]->numouts; i++) {
+                if (connections[a]->outs[i] != b) {
+                    outs[++j] = connections[a]->outs[i]; 
+                }
+            }
+
+            kill(connections[a]->pid, SIGUSR1);
+            waitpid(connections[a]->pid, NULL, 0);
+            connections[a] = NULL;
+
+            pid == fork();
+
+            if (pid == -1) perror("fork");
+
+            if (pid == 0) {     
+                fanout(a, outs, numouts);
+            }
+            else {
+                f = create_fanout(pid, outs, numouts);
+                connections[a] = f;
+            }
+        }
+    }
+    else { // IN (a) não existe
+        return 1;
+    }
+
+    return 0;
+}
+
+/*
+ * @brief Comando que injeta a entrada de um nó da rede com o resultado da
+ *        execução de um outro comando (do sistema Unix)
+ * 
+ * Abre o FIFO de entrada do nó recebido em options e, de seguida, cria um filho
+ * que execute o comando e escreve lá o resultado da execução do mesmo.
+ *
+ * @param options Array com os campos do comando (secções separadas por espaço)
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
+int inject(char** options)
+{
+    int fd, pid;
+    char in[15];
+
+    sprintf(in, "./tmp/%sin", options[1]);
+
+    fd = open(in, O_RDONLY);
+
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    pid = fork(); // é preciso guardar o pid nalgum lado?
+
+    if (pid == 0) {
+        dup2(fd, 1);
+        execvp(options[2], &options[3]);
+    }
+
+    return 0;
+}
+
+
+/******************************************************************************
+ *                      INTERPRETADOR DE COMANDOS                             *
+ ******************************************************************************/
+
+/*
+ * @brief Interpretador dos comandos do controlador
+ *
+ * @param cmdline Comando recebido
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
 int interpretador(char* cmdline)
 {
+    int i = 0;
     char* options[MAX_SIZE];
-    int i = 0, error = 0;
+
+    /* Separa a linha recebida pelos espaços */
 
     options[i] = strtok(cmdline, " ");
 
-    while (options[i] != NULL) { options[++i] = strtok(NULL, " "); }
+    while (options[i] != NULL) {
+        options[++i] = strtok(NULL, " ");
+    }
 
-    if (strcmp(options[0], "node") == 0) { return node(options); }
-    else if (strcmp(options[0], "connect") == 0) { return connect(options); }
-	else if (strcmp(options[0], "disconnect") == 0) { return disconnect(options); }
-	else if (strcmp(options[0], "inject") == 0) { return inject(options); }
-	else {  return 1; } // Comando não existe
+    /* Interpreta qual o comando e invoca a função respetiva */
+
+    if (strcmp(options[0], "node") == 0) {
+        return node(options, 0);
+    }
+
+    else if (strcmp(options[0], "connect") == 0) {
+        return connect(options, i);
+    }
+
+    else if (strcmp(options[0], "disconnect") == 0) {
+        return disconnect(options);
+    }
+
+    else if (strcmp(options[0], "inject") == 0) {
+        return inject(options);
+    }
+
+    else { /* Comando não existe (erro) */
+        return 1;
+    }
 
     return 0;
 }
-*/
 
 
+/******************************************************************************
+ *                                 MAIN                                       *
+ ******************************************************************************/
 
-int main(int argc, char* argv[]) {
-    int n;
-    int fd1;
-    char* buffer[PIPE_BUF];
-    
+/*
+ * @brief Função main do controlador
+ *
+ * O controlador pode ser, opcionalmente, invocado com a referência a um
+ * ficheiro de configuração. Neste caso, este ficheiro é lido e os comandos são
+ * interpretados. Em todos os casos, de seguida o controlador permanece em
+ * execução, à espera que receba mais comandos do stdin.
+ *
+ * O resultado final da aplicação dos componentes/filtros aos dados injetados é
+ * apresentado no stdout.
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
+int main(int argc, char* argv[])
+{
+    int fd;   
+    char buffer[MAX_SIZE];
+
+    /* Inicializa as variáveis globais da rede */
+
+    init_network();
+
+    /* Caso seja passado um ficheiro de configuração como argumento, este é lido
+       e os comando são interpretados sequencialmente (linha a linha) */
+
     if (argc == 2) {
-        // ler ficheiro de configuração (se existir) e executar linha a linha
+        fd = open(argv[1], O_RDONLY);
 
-        //avisar que carregou com sucesso ?
-    }
-    /*
-    //loop leitura de comandos
-    while(1) {
-   		while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
-      		if(n!=0) { //não parar com EOF
-      			}
+        while (readln(fd, buffer, MAX_SIZE) > 0) {
             interpretador(buffer);
         }
     }
-    */
 
-// ########### criar nodo ##########################################
-    int nodos[MAX_SIZE]; //num max de nodos, inicializar todos os valores a -1
-    int nodospid[MAX_SIZE]; //guardar pid nodo (para eventualmente terminar no futuro)
-    int i;
-    for (i = 0 ; i < 100 ; i++) { nodos[i] = 0; }
+    /* Lê comandos do stdin até receber EOF (Ctrl-D) */
 
-    // (numero nodo, comando a executar, output descartar)
-    int node(char *num, char *cmd[], int option) { // option = 0 um dos filtros, 1 = descartar output
-        //verificar se já não existe esse nodo
-        int a = atoi(num);
-        if (nodos[a] != 0) { printf("Já existe esse nodo: %d\n",a); return 1; } //tratar o erro?
-        // fork para correr o filtro
-        nodospid[a] = fork();
-        if(nodospid[a] == 0) {
-            //fazer fifo in e out
-            char in[15],out[15];
-            int fdi,fdo;
-            sprintf(in,"./tmp/%sin",num); // Nin
-            if(!option) sprintf(out,"./tmp/%sout",num); //Nout
-            //printf("valor de in: %s e valor de out: %s\n",in, out);
-            if(mkfifo(in, 0666) == -1) { perror("fifo in falhou"); } 
-            if(!option) { if(mkfifo(out, 0666) == -1) { perror("fifo out falhou"); } }
-            fdi = open(in,O_RDONLY); //fifo leitura
-            if(!option) fdo = open(out,O_WRONLY); //fifo escrita
-            //rederecionar fifos
-            dup2(fdi,0); //stdin para fifo in
-            if(!option) dup2(fdo,1); //stdout para fifo out
-            //executar filtro e terminou por aqui
-            execvp(cmd[0],cmd);
-            //execlp("ls","ls","-la",NULL);
-        }
-        //criado com sucesso, actualizar valor nodo
-        nodos[a] = 1;
-        return 0;
-	}
-// ################## NODE END ############################################
-
-	//inicializações fanout
-	int fnum = 0; //contador de fanout(s)
-	int fpid[MAX_SIZE]; //pids fanout
-	//int fstop[MAX_SIZE]; //fanout terminar - tem de ser global
-	int fin[MAX_SIZE]; //fanout fnum in
-	for(i=0;i<MAX_SIZE;i++) { fin[i] = 0; } // não há nodo 0  zerar runs e fin //fstop[i] = 0 ; 
-	int fnouts[MAX_SIZE]; //numero de outs por fan - fnum 
-	char fouts[MAX_SIZE][10]; //os outs daquele fan - fnum, Max de 10 outs.
-
-//função signal para a fanout
-void stopfan() { stop = 1; } //fanout n para parar na próxima iteração
-
-
-// #### FANOUT ###############################
-
-	void fanout(char *input, char *outputs[], int n, int outs) {// in = fifo in , out = fifo(s) out, n = fnum number, outs = numero de saidas
-
-	    signal(SIGUSR1, stopfan); //pára o fanout na próxima iteração
-	    char inp[15],outp[15];
-		int bytes,i,fdin,prints[outs];
-	    char buffer[MAX_SIZE];
-	    int stop = 0;
-	    //input
-	    sprintf(inp,"./tmp/%sout",input); // output do nodo input
-	    //write(1,"Vou abrir input:\n",16);
-	    fdin = open("./tmp/1out",O_RDONLY);//abrir fifo entrada leitura
-	    if(fdin < 1) perror("Falhou o open no fanout");
-	    //abrir fifos outputs para escrita
-	    for(i=0;i<outs;i++) { 
-	    	sprintf(outp,"./tmp/%sin",outputs[i]); //escrever nos inputs dos nos
-	    	prints[i] = open(outp,O_WRONLY); //verificar se abriu 
-	    	if(prints[i] < 1) perror("Falhou o open no fanout");
-	    	}
-	    //loop leitura e escrita em todos os outputs
-	    while ((bytes = read(fdin, buffer, PIPE_BUF)) > 0 && (stop == 0)) {
-	    	//readline
-	        // faz os writes em todos os outputs (prints[])
-	        for (i = 0; i < outs; i++) {
-	            write(prints[i], buffer, bytes);
-	        }
-	    }
-	    //fechar fifos escrita/leitura ao receber signal para fstop
-	    //if (fstop[n] == 1) for ... close(...)
-	    //fin[fnum] == 0; //tirar do input
-	    // (...)
-	    //exit() - apanhar o exit para executar o novo fanout
-	}
-//##################FANOUT END ##########################
-
-
-
-// ########### CONNECT ##############################################
-//connect nodoX nodo(s)
-//connect 1 2
-//connect 1 2 3 4
-
-void connect(char *nodo, char *out[], int nouts) {
-		fnum++; //aumentar fnum
-		int a = atoi(nodo);
-		//verificar nos fanouts se algum está a ler do nodo ; se sim: matar fanout e criar fanout com novos valores
-		//antes de matar, verificar os nouts e outputs e mante-los. aumentar nouts, out[] e etc. TODO
-		for(i=0;i<MAX_SIZE-1;i++) { 
-			if(fin[i] == a) { kill(fpid[i],SIGUSR1); break; } 
-		}
-
-
-		//fork, correr fanout, guardar pid fannout para mandar signal
-		fpid[fnum] = fork();
-		if(fpid[fnum] == 0) {
-			fanout(nodo, out, fnum, nouts); //criar fannout, fnum para usar no fstop	
-		}
-		fin[fnum] = a; //fannout num fnum recebe input nodo a
-		fnouts[fnum] = nouts; //guardar numero de outs
-		for(i=0;i<nouts;i++) {
-				fouts[fnum][i] = out[i];
-			}
-		//char *lixo[100];
-		//sprintf(lixo,"fannout com fpid %d, fnum= %d e fin[fnum]= %d a= %d fin[1] = %d\n", fpid[fnum],fnum, fin[fnum],a, fin[1]);
-		//write(1,lixo,strlen(lixo));
-	}
-// ############# CONNECT END ######################################
-
-// ########### DISCONNECT ##############################################
-// disconnect <id1> <id2>
-void disconnect(char *nodo, char *remover){
-	//verificar fannout que tem aquele input, ver os outputs totais, se >1, manter e remover o especificado, caso contrário enviar signal para matar aquele fanout.
-	int getfnum = 0; //assume-se que o nodo existe e não existe nodo 0.
-	int a = atoi(nodo);
-	int nouts;
-
-
-	for(i=0;i<MAX_SIZE-1;i++) { 
-		if (fin[i] == a) { getfnum = a; break; }//não é preciso continuar o ciclo :) }
-	}
-
-
-	//mais de 1 out
-
-	if(fnouts[getfnum] > 1) { 
-		nouts = fnouts[getfnum]; //numero de outs
-		char *outs[10];
-		//char *tmp[nouts];
-		//tmp = fouts[getfnum]; //- TA A DAR WARNING, porquê ?
-		//passar os outs sem o que se tem de remover
-		//char *lixo[100];
-		//sprintf(lixo, "valor de nouts: %d e de fouts[getfnum][0]: %s\n", nouts, fouts[getfnum][i]);
-		//write(1,lixo,strlen(lixo));
-		int m =0;
-		//ESTA AQUI A DAR SEGMENTATION FAULT!!!! ao tentar copiar os valores, nao consigo descobrir o porquê
-		for(i=0;i<nouts;i++) {
-			//printf("i chegou= %d e %s \n",m,fouts[getfnum][0]);
-			if(strcmp(fouts[getfnum][i],nodo) != 0) { outs[m] = fouts[getfnum][i];  m++ ; }
-			//printf("fiz a atribuicao %d\n",m);
-	
-		}
-		
-		nouts--; //remover 1 ao total de outs
-		kill(fpid[getfnum], SIGUSR1); //mandar parar na prox it
-		waitpid(fpid[getfnum],NULL,0); //esperar que termine
-		write(1,"Removido com sucesso\n",20); //mensagem de aviso com sucesso?
-		//fazer novo connect (seria repetir parte do codigo do connect)
-		connect(nodo, outs, nouts);
-	}
-	//só tem 1 out
-	else {
-		//ver PID do fanout
-		printf("Pid a matar: %d pid deste processo: %d\n", fpid[getfnum],getpid());
-		kill(fpid[getfnum], SIGUSR1); //mandar parar na prox it - É aqui que falha?
-		waitpid(fpid[getfnum],NULL,0); //esperar que termine
-		write(1,"Removido com sucesso\n",20); //mensagem de aviso com sucesso?
-	}
-
-}
-
-// ########### DISCONNECT  END ############################################
-
-// ######### INJECT ###########################
-// inject <id> <cmd> <args...>
-
-void inject(char *nodo, char *args[]) {
-	//verificar se nodo existe e dar erro?
-
-	//fork, redirect output para fifo nodo, só isto?
-
-}
-
-
-// ########## INJECT END #########################
-
-
-
-    //testar criar nodos
-    char *test[2] = {"./const","10"};
-    char *test2[3] = {"./const","20"};
-    char *saidas[2] = {"2","3"};
-    char *saida[1] = {"3"};
-    char *x[1] = {"2"};
-    //execvp(test[0],test);
-
-    node("1",test,0);
-   	node("2",test2,0);
-   	node("3",test,0);
-    //node("1",test2,0); //erro ao criar
-    //printf("criei os nodos\n");
-
-    /*
-    int fdin;
-    mkfifo("/tmp/1out",0666);
-    fdin = open("/tmp/1out",O_RDONLY);//abrir fifo entrada leitura
-    if(fdin < 1) perror("Falhou o open no fanout");
-    else write(fdin,"teste",5); */
-    //connect("1",saidas,2); // connectar output nodo 1 ao input nodo 2 e 3, quantidade de nodos
-    connect("1",saida,1); //connectar output nodo 1 ao input nodo 3
-    //connect("1",)
-    //disconnect("1","2"); //desconectar os o 2 do 1.
-    //printf("connect feito, inserir colunas de teste:\n");
-    
-    //simular injfect nodo1
-    int fdt = open("./tmp/1in",O_WRONLY);
-    while((n=read(0,buffer,PIPE_BUF))>=0) {
-    	if(n == 0) { write(1,"vou fazer disconnect\n",20); disconnect("1","3"); } //ctrl+d para eof
-    	else write(fdt,buffer,n);
+    while (read(0, buffer, MAX_SIZE) > 0) {
+        interpretador(buffer);
     }
+
     return 0;
 }
-
-/*
-./controlador
-./controlador ficheiro_configuracao.txt
-
-./cliente node 1 window 2 avg 10
-./cliente inject ...
-*/
