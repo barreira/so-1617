@@ -1,3 +1,6 @@
-*.o
 controlador
-*.aout
+const
+filter
+window
+spawn
+*.o
