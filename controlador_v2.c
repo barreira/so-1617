@@ -15,15 +15,33 @@
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
+int stopfan = 0; // serve para parar o fanout (conexão entre os nós) sem ser
+                 // necessário fazê-lo abruptamente (i.e. com SIGKILL)
+
+/*
+ * Estrutura que configura um fanout
+ */
 typedef struct fanout {
     int pid;     // pid do fanout
     int* outs;   // array de IDs dos nós do output
     int numouts; // número de nós de output
 } *Fanout;
 
-Fanout connections[MAX_SIZE]; // índice indica in do fanout (ID do nó)
-                              // tem PID do processo fanout (se estiver ativo)
-
+/*
+ * Vetor de fanouts que corresponde ao conjunto de todas as conexões entre nós
+ * da rede. O índice deste array indica o ID do nó IN do fanout.
+ * 
+ * Se o fanout que tem o nó X como IN estiver ativo, a posição X do array é
+ * diferente de NULL e tem uma struct do tipo fanout, corresponde à conexão
+ * (fanout) que parte deste mesmo nó.
+ */
+Fanout connections[MAX_SIZE];
+                              
+/*
+ * @brief Inicializa as variáveis globais da rede
+ *
+ * Iniciliza os nós a 0 e as conexões a NULL.
+ */
 void init_network()
 {
     int i;
@@ -36,6 +54,39 @@ void init_network()
 
 /* Funções auxiliares */
 
+/*
+ * @brief Lê uma linha
+ *
+ * @param fildes Descritor de ficheiro de onde se lê
+ * @param buf    Buffer para onde se escreve os dados lidos
+ * @param nbyte  Número máximo de bytes a ler
+ *
+ * @return Retorna o número de bytes lidos
+ */
+ssize_t readln(int fildes, void *buf, size_t nbyte) {
+	int i, n;
+
+	for (i=0; i < nbyte; i++) {
+		n = read(fildes, buf+i, 1);
+
+		if (n == -1) return -1;
+
+		if (n == 0) break;
+
+		if (((char*)buf)[i] == '\n')
+			((char *)buf)[i] = '\0';
+	}
+
+	return ++i;
+}
+
+/*
+ * @brief Cria um Fanout (struct)
+ *
+ * @param pid     PID do processo que corre o fanout
+ * @param outs    Array com os IDs dos nós do output
+ * @param numouts Número de nós do output
+ */
 Fanout create_fanout(int pid, int* outs, int numouts)
 {
     int i;
@@ -55,13 +106,28 @@ Fanout create_fanout(int pid, int* outs, int numouts)
     return f;
 }
 
-int stopfan = 0;
-
+/*
+ * @brief Coloca a variável global stopfan a 1
+ *
+ * Esta função é usada como handler do sinal SIGUSR1 recebido pelo processo que
+ * executa o fanout, fazendo com que este pare de executar (em alternativa a
+ * matar diretamente o processo).
+ */
 void stop_fanout()
 {
     stopfan = 1;
 }
 
+/*
+ * @brief Executa um fanout
+ *
+ * Definimos como fanout uma função que recebe um input e repete o que conseguir
+ * ler desse input para um ou mais outputs recebidos como parâmetro.
+ *
+ * @param input   Input do fanout
+ * @param outputs Array com os outputs
+ * @param numouts Número de outputs
+ */
 void fanout(int input, int outputs[], int numouts)
 {
     int i, fdi, fdos[numouts], bytes;
@@ -96,6 +162,21 @@ void fanout(int input, int outputs[], int numouts)
 
 /* Comandos do controlador */
 
+/*
+ * @brief Comando que adiciona um nó à rede
+ *
+ * Primeiro, esta função verifica se o nó já existe na rede (se não existir dá
+ * erro). Depois cria um processo filho para executar o componente/filtro, bem
+ * como dois FIFOs (pipes com nome) de entrada e saida de dados no nó. Os nomes
+ * destes pipes são "Xin" e "Xout" em que X é o ID do nó.
+ *
+ * Por fim, adiciona o nó criado à rede.
+ *
+ * @param options Array com os campos do comando (secções separadas por espaço)
+ * @param flag    Flag que indica se o output do nó deverá ser descartado
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
 int node(char** options, int flag)
 {
     int n;
@@ -148,6 +229,23 @@ int node(char** options, int flag)
     return 0;
 }
 
+/*
+ * @brief Comando que faz a conexão entre dois ou mais nós da rede
+ *
+ * Primeiro verifica se já existia uma conexão cujo IN seja igual ao recebido em
+ * options. Em caso afirmativo, guarda os IDs dos nós do output dessa conexão e
+ * mata a conexão.
+ * 
+ * Em todos os casos (caso existisse ou não uma conexão anterior), são
+ * adicionados os nós de output recebidos (em options) e é criada uma nova
+ * conexão que liga os nós recebidos (mais os nós pré-existentes, caso seja esse
+ * o caso).
+ *
+ * @param options    Array com campos do comando (secções separadas por espaço)
+ * @param numoptions Tamanho do array com os campos do comando (options)
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro 
+ */
 int connect(char** options, int numoptions)
 {
     int i, j = 0, n, pid, numouts;
@@ -156,7 +254,6 @@ int connect(char** options, int numoptions)
     n = atoi(options[1]);
 
     numouts = numoptions - 2;
-
     int outs[numouts];
 
     if (connections[n] != NULL) {
@@ -170,9 +267,6 @@ int connect(char** options, int numoptions)
         kill(connections[n]->pid, SIGUSR1);
         waitpid(connections[n]->pid, NULL, 0);
         connections[n] = NULL;
-    }
-    else {
-        int outs[numouts];
     }
     
     for (i = 2; i < numoptions; i++) {
@@ -194,7 +288,21 @@ int connect(char** options, int numoptions)
     return 0;
 }
 
-// e.g. disconnect 1 2
+/*
+ * @brief Comando que desfaz a conexão entre dois nós da rede
+ *
+ * Primeiro verifica se existia alguma conexão para o IN recebido em options
+ * (caso não haja é retornado erro). Depois, verifica se esse IN tem o OUT
+ * recebido em options como output (caso não tenha é retornado erro). Após isso,
+ * se apenas houver esse OUT na conexão pré-existente, então essa conexão é
+ * terminada e a função termina. Caso contrário, são guardados os restantes outs
+ * da conexão pré-existente e é criada uma nova conexão com apenas esses outs
+ * (e sem o OUT retirado).
+ *
+ * @param options Array com os campos do comando (secções separadas por espaço)
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
 int disconnect(char** options)
 {
     int a, b, exists = 0, numouts, i, j = 0, pid;
@@ -260,7 +368,17 @@ int disconnect(char** options)
     return 0;
 }
 
-// e.g. inject 1 ...
+/*
+ * @brief Comando que injeta a entrada de um nó da rede com o resultado da
+ *        execução de um outro comando (do sistema Unix)
+ * 
+ * Abre o FIFO de entrada do nó recebido em options e, de seguida, cria um filho
+ * que execute o comando e escreve lá o resultado da execução do mesmo.
+ *
+ * @param options Array com os campos do comando (secções separadas por espaço)
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
 int inject(char** options)
 {
     int fd, pid;
@@ -287,16 +405,27 @@ int inject(char** options)
 
 /* Interpretador de comandos */
 
+/*
+ * @brief Interpretador dos comandos do controlador
+ *
+ * @param cmdline Comando recebido
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
 int interpretador(char* cmdline)
 {
     int i = 0;
     char* options[MAX_SIZE];
+
+    /* Separa a linha recebida pelos espaços */
 
     options[i] = strtok(cmdline, " ");
 
     while (options[i] != NULL) {
         options[++i] = strtok(NULL, " ");
     }
+
+    /* Interpreta qual o comando e invoca a função respetiva */
 
     if (strcmp(options[0], "node") == 0) {
         return node(options, 0);
@@ -314,22 +443,48 @@ int interpretador(char* cmdline)
         return inject(options);
     }
 
-    else { /* Comando não existe */
+    else { /* Comando não existe (erro) */
         return 1;
     }
 
     return 0;
 }
 
+
+/*
+ * @brief Função main do controlador
+ *
+ * O controlador pode ser, opcionalmente, invocado com a referência a um
+ * ficheiro de configuração. Neste caso, este ficheiro é lido e os comandos são
+ * interpretados. Em todos os casos, de seguida o controlador permanece em
+ * execução, à espera que receba mais comandos do stdin.
+ *
+ * O resultado final da aplicação dos componentes/filtros aos dados injetados é
+ * apresentado no stdout.
+ *
+ * @return 0 em caso de sucesso ou 1 em caso de erro
+ */
 int main(int argc, char* argv[])
 {
+    int fd;   
     char buffer[MAX_SIZE];
+
+    /* Inicializa as variáveis globais da rede */
 
     init_network();
 
+    /* Caso seja passado um ficheiro de configuração como argumento, este é lido
+       e os comando são interpretados sequencialmente (linha a linha) */
+
     if (argc == 2) {
-        // ler ficheiro de configuração
+        fd = open(argv[1], O_RDONLY);
+
+        while (readln(fd, buffer, MAX_SIZE) > 0) {
+            interpretador(buffer);
+        }
     }
+
+    /* Lê comandos do stdin até receber EOF (Ctrl-D) */
 
     while (read(0, buffer, MAX_SIZE) > 0) {
         interpretador(buffer);
