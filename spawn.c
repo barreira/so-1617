@@ -80,6 +80,7 @@ int main(int argc, char const *argv[]){
       	if(WIFEXITED(status)) { sprintf(final,"%s:%i\n",buffer,WEXITSTATUS(status)); } //adicionar o exit status
 		write(1,final,strlen(final));
 	}
+	//else { pause(); }
  	}
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar

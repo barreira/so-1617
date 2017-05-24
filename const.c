@@ -28,6 +28,7 @@ int main(int argc, char const *argv[]){
 		sprintf(print,"%s:%s\n",buffer,argv[1]); //acrescentar resto :const
 		write(1,print,strlen(print)); //write stdout
 		}
+		//else { pause(); }
 	}
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar

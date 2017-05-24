@@ -121,6 +121,7 @@ int main(int argc, char const *argv[]){
 	  sprintf(final,"%s:%i\n",buffer,res); //acrescentar resultado fim da linha
 	  write(1,final,strlen(final));
 	}
+	//else { pause(); }
   }
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
