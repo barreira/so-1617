@@ -1,0 +1,16 @@
+#!/bin/sh
+
+echo "A instalar diretorias..."
+
+make clean
+mkdir tmp
+
+echo "\n"
+echo "A compilar o programa..."
+
+make
+
+echo "\n"
+echo "A instalação terminou!"
+
+exit 0
