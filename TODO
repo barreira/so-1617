@@ -2,41 +2,7 @@
 
 ####### controlador
 
-- adicionar pauses
-
-$node
-- all done
-
-$ connect 
-- não verifica loops
-- tem de se testar criando nodos para o fifo nao bloquear
-
-	:fannout
-	- manter os nos de saida ao matar um com a mesma entrada (ao utilizar um connect novo). connect 1 3 e depois connect 1 4, tem de se manter a saida para o 3 => connect 1 3 4 
-	já tem comentado o "algoritmo".
-	-
-
-$ disconnect
-- deveria funcionar só com 1, não sei se o problema é com o kill ou quê, disconnect de um nodo que tem mais que um output está a dar segmentation fault ao ler do array e não consigo perceber o porquê.
-
-$ inject
-
-
-$Funcionalidades básicas
-
-Permanência de uma rede
-Concorrência nas escritas no mesmo nó - resolvido usando PIPE_BUF, o SO garante que é tudo escrito, op atomica
-Nós sem saida definida - feito, mandar option = 1, ao criar o nodo.
-Especificacação incremental da rede - neste momento descarta as saidas antigas, preciso alterar para manter as existentes
-
-$Funcionalidades adicionais (avançadas)
-
-Casos de teste - criar ficheiro com outras configurações
-Alteração de componentes - alterar o filtro ? matar processo (tendo em atenção para terminar o fanout, e criar novo?)
-Remoção de nós - todo
-
-
- * Não sei porquê ao fim de alguns inputs desliga-se
+nodes a descartar -fork
 
 
 ######## makefile
