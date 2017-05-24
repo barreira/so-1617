@@ -149,6 +149,9 @@ void fanout(int input, int outputs[], int numouts)
     if (fdi == -1) perror("open fifo in fanout");
 
     // Abrir FIFOs de saída
+    for(i=0;i<numouts;i++) {
+        printf("outs[i] do fannout: %d i: %d", outputs[i],i);
+    }
 
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
@@ -296,6 +299,7 @@ int connect(char** options, int numoptions)
     }
     
     for (i = 2; i < numoptions; i++) {
+        printf("Options[i] = %s ; i= %d\n",options[i],i);
         outs[++j] = atoi(options[i]);
     }
 
@@ -310,7 +314,7 @@ int connect(char** options, int numoptions)
         f = create_fanout(pid, outs, numouts);
         connections[n] = f;
     }
-
+    write(1,"Fannout executado com sucesso\n",30);
     return 0;
 }
 
