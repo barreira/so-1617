@@ -6,6 +6,7 @@
 #include <stdlib.h>   // atoi
 #include <limits.h>   // PIPE_BUF
 #include <signal.h>   // sinais
+#include <sys/wait.h> // wait
 
 #define MAX_SIZE 1024
 
@@ -14,20 +15,21 @@
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
-Fanout connections[MAX_SIZE]; // array com ID in fannout, activo se != -1/NULL
-
 typedef struct fanout {
-    int pid;            // pid do fanout
-    int outs[MAX_SIZE]; // IDs dos nós do output
-    int numouts;        // número de nós de output
-} Fanout;
+    int pid;     // pid do fanout
+    int* outs;   // array de IDs dos nós do output
+    int numouts; // número de nós de output
+} *Fanout;
+
+Fanout connections[MAX_SIZE]; // índice indica in do fanout (ID do nó)
+                              // tem PID do processo fanout (se estiver ativo)
 
 void init_network()
 {
     int i;
 
     for (i = 0; i < MAX_SIZE; i++) {
-        nodes[i] = -1;
+        nodes[i] = 0;
         connections[i] = NULL;
     }
 }
@@ -36,10 +38,18 @@ void init_network()
 
 Fanout create_fanout(int pid, int* outs, int numouts)
 {
+    int i;
+    int* array;
+
     Fanout f = malloc(sizeof(struct fanout));
-    
+    array = malloc(sizeof(int) * numouts);
+
+    for (i = 0; i < numouts; i++) {
+        array[i] = outs[i];
+    }
+
     f->pid = pid;
-    f->outs = outs;
+    f->outs = array;
     f->numouts = numouts;
 
     return f;
@@ -55,20 +65,28 @@ void stop_fanout()
 void fanout(int input, int outputs[], int numouts)
 {
     int i, fdi, fdos[numouts], bytes;
-    char in[15], out[15], buffer[MAX_SIZE];
+    char in[15], out[15], buffer[MAX_SIZE], aux[5];
 
     signal(SIGUSR1, stop_fanout);
 
-    sprintf(in, "./tmp/%sout", input);
+    sprintf(aux, "%d", input);
+    sprintf(in, "./tmp/%sout", aux);
 
-    fdi = open(in, O_RDONLY); if(fdin < 1) perror("Falhou o open do fifo do input do fanout");
-    //abrir fifos de saida
+    fdi = open(in, O_RDONLY);
+    
+    if (fdi == -1) perror("open");
+
+    // Abrir FIFOs de saída
+
     for (i = 0; i < numouts; i++) {
-        sprintf(out, "./tmp/%sin", outputs[i]);
+        sprintf(aux, "%d", outputs[i]);
+        sprintf(out, "./tmp/%sin", aux);
 	    fdos[i] = open(out, O_WRONLY);
-	    if(fdos[i] < 1) perror("Falhou o open do fifo para output do fanout");
+	    if (fdos[i] == -1) perror("open");
     }
-    //escrita nos nós
+    
+    // Escrever nos FIFOs de saída
+
     while ((bytes = read(fdi, buffer, PIPE_BUF)) > 0 && !stopfan) {
         for (i = 0; i < numouts; i++) {
             write(fdos[i], buffer, bytes);
@@ -84,7 +102,7 @@ int node(char** options, int flag)
 
     /* Verificar se o nó já existe na rede */
 
-    n = atoi(options[1]); //nó de entrada
+    n = atoi(options[1]); // nó de entrada
 
     if (nodes[n] != -1) {
         printf("Já existe nó com ID %d\n", n);
@@ -93,7 +111,9 @@ int node(char** options, int flag)
 
     /* Criar filho para correr o componente */
 
-    nodespid[n] = fork(); if (fork() < 0) perror("Falhou fork() ai criador o node");
+    nodespid[n] = fork();
+    
+    if (nodespid[n] == -1) perror("fork");
     
     if (nodespid[n] == 0) {
         
@@ -102,11 +122,11 @@ int node(char** options, int flag)
         char in[15], out[15];
         int fdi, fdo;
 
-        sprintf(in, "./tmp/%sin", n);
-        if (!flag) { sprintf(out, "./tmp/%sout", n); }
+        sprintf(in, "./tmp/%sin", options[1]);
+        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); }
 
         mkfifo(in, 0666);
-        if (!flag) { mkfifo(out, 0666);  }
+        if (!flag) { mkfifo(out, 0666); }
         
         fdi = open(in, O_RDONLY);
         if (!flag) { fdo = open(out, O_WRONLY); }
@@ -114,7 +134,7 @@ int node(char** options, int flag)
         /* Redirecionar para os FIFOs */
 
         dup2(fdi, 0);
-        if (!flag) { dup2(fdo, 1);}
+        if (!flag) { dup2(fdo, 1); }
         
         /* Executar o componente */
 
@@ -130,70 +150,114 @@ int node(char** options, int flag)
 
 int connect(char** options, int numoptions)
 {
-    int i, j = 0;
-    int numouts = numoptions - 2;
-    int n, pid, numouts, outs[numouts];
+    int i, j = 0, n, pid, numouts;
     Fanout f;
 
     n = atoi(options[1]);
 
-    // Verifica-se se já existia conexão a partir daquele nó
-    // Se sim, mata conexão copia saidas e faz um novo fannout com a informação adicional
-    // não está a verificar loops
-    /* Quando existe um fannout a ler daquele input */
-    if (connections[n] != NULL) { //já existe um fannout a ler desse nodo
-    	int tmpouts[20];
-    	int tmpnouts;
-    	tmpouts = connectons[n]->outs;
-    	tmpnouts = connectons[n]->numouts;
+    numouts = numoptions - 2;
+
+    int outs[numouts];
+
+    if (connections[n] != NULL) {
+        numouts += connections[n]->numouts;
+        int outs[numouts];
+
+        for (i = 0; i < connections[n]->numouts; i++) {
+        	outs[++j] = connections[n]->outs[i];
+   		}
+
         kill(connections[n]->pid, SIGUSR1);
-        waitpid(connections[n]->pid,NULL,0); //esperar que o fannout termine e executar o novo com as novas saidas
-        //criar o primeiro outs[]
-   		for (i = 2; i < numoptions; i++) { //aqui não deveria ser numoptions-2 ? senão o ciclo pára logo, certo? com 2 outs por exemplo. ou o numouts? :)
-        	outs[++j] = atoi(options[i]);
-   		 }
-   		//juntar com os novos
-   		j=0;
-        for(i=tmpouts;i<numouts+tmpnouts;i++) {
-        	tmpouts[i] = outs[++j];
-        }
-        int total = numouts+tmpnouts;
-    	pid = fork();
-    	if(pid< 0) perror("Falhou a criação do fork no fannout");
-    	if (pid == 0) {
-    	// Cria o fanout (struct) e adiciona-o à lista das conexões
-        f = create_fanout(pid, outs, numouts);
-    	connections[n] = f;
-    	 //void fanout(int input, int outputs[], int numouts)
-    	fanout(n, outs, numouts);
+        waitpid(connections[n]->pid, NULL, 0);
+        connections[n] = NULL;
     }
- 
+    else {
+        int outs[numouts];
     }
-    /* quando não existe nenhum fannout a ler daquele node */
-    else { 
-    // Constroi o array de nós do output
-    for (i = 2; i < numoptions; i++) { //aqui não deveria ser numoptions-2 ? senão o ciclo pára logo, certo? com 2 outs por exemplo. ou o numouts? :)
+    
+    for (i = 2; i < numoptions; i++) {
         outs[++j] = atoi(options[i]);
     }
 
-    // Cria processo da conexão e põe-no a fazer fanout
     pid = fork();
-    if(pid< 0) perror("Falhou a criação do fork no fannout");
-    if (pid == 0) {
-    	// Cria o fanout (struct) e adiciona-o à lista das conexões
+
+    if (pid == -1) perror("fork");
+    
+    if (pid == 0) {     
+        fanout(n, outs, numouts);
+    }
+    else {
         f = create_fanout(pid, outs, numouts);
-    	connections[n] = f;
-    	//void create_fanout(int input, int outputs[], int numouts)
-    	fanout(n, outs, numouts);
+        connections[n] = f;
     }
 
-    }
     return 0;
 }
 
+// e.g. disconnect 1 2
 int disconnect(char** options)
 {
+    int a, b, exists = 0, numouts, i, j = 0, pid;
+    Fanout f;
 
+    a = atoi(options[1]);
+    b = atoi(options[2]);
+
+    // Verificar se existe alguma conexão para o IN (a) recebido
+
+    if (connections[a] != NULL) {
+        
+        numouts = connections[a]->numouts;
+
+        // Verificar se a conexão tem OUT (b) como saída
+
+        for (i = 0; i < numouts; i++) {
+            if (connections[a]->outs[i] == b) {
+                exists = 1;
+            }
+        }
+
+        if (!exists) { // A conexão não tem OUT (b) com saída
+            return 1;
+        }
+
+        if (numouts == 1) {
+            kill(connections[a]->pid, SIGUSR1);
+            waitpid(connections[a]->pid, NULL, 0);
+            connections[a] = NULL;         
+            return 0;
+        }
+        else {
+            int outs[numouts--];
+
+            for (i = 0; i < connections[a]->numouts; i++) {
+                if (connections[a]->outs[i] != b) {
+                    outs[++j] = connections[a]->outs[i]; 
+                }
+            }
+
+            kill(connections[a]->pid, SIGUSR1);
+            waitpid(connections[a]->pid, NULL, 0);
+            connections[a] = NULL;
+
+            pid == fork();
+
+            if (pid == -1) perror("fork");
+
+            if (pid == 0) {     
+                fanout(a, outs, numouts);
+            }
+            else {
+                f = create_fanout(pid, outs, numouts);
+                connections[a] = f;
+            }
+        }
+    }
+    else { // IN (a) não existe
+        return 1;
+    }
+
+    return 0;
 }
 
 int inject(char** options)
@@ -215,7 +279,7 @@ int interpretador(char* cmdline)
     }
 
     if (strcmp(options[0], "node") == 0) {
-        return node(options);
+        return node(options, 0);
     }
 
     else if (strcmp(options[0], "connect") == 0) {
@@ -239,6 +303,8 @@ int interpretador(char* cmdline)
 
 int main(int argc, char* argv[])
 {
+    char buffer[MAX_SIZE];
+
     init_network();
 
     if (argc == 2) {
