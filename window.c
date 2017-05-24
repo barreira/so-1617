@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
-#include "readline.h" //myreadline
 
 /*window <coluna> <operacao> <linhas>
 Este programa reproduz todas as linhas acrescentando-lhe uma nova coluna com o resultado de uma
