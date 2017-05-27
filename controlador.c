@@ -150,13 +150,13 @@ void fanout(int input, int outputs[], int numouts)
 
     // Abrir FIFOs de saída
     for(i=0;i<numouts;i++) {
-        printf("outs[i] do fannout: %d i: %d", outputs[i],i);
+        printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
     }
 
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
-        printf("Vou abrir as saidas fifo out do fanout: %s \n",out);
+        //printf("Vou abrir as saidas fifo out do fanout: %s \n",out);
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
     }
@@ -299,8 +299,9 @@ int connect(char** options, int numoptions)
     }
     
     for (i = 2; i < numoptions; i++) {
-        printf("Options[i] = %s ; i= %d\n",options[i],i);
-        outs[++j] = atoi(options[i]);
+        //printf("Options[i] = %s ; i= %d\n",options[i],i);
+        outs[j] = atoi(options[i]);
+        j++;
     }
 
     pid = fork();
