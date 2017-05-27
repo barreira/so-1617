@@ -467,6 +467,9 @@ int apaga(char** options) {
             }
          } 
     }
+    v2:
+    ver que nodos tem a saida = x, y= no a remover, quando tiver, disconnect x y
+   
 	*/
     //remover os fifos e matar o node
     sprintf(tempin,"./tmp/%sin",options[1]);
