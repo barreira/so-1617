@@ -254,7 +254,7 @@ int node(char** options, int flag)
     /* Acrescentar nó à rede */   
 
     nodes[n] = 1;
-    write(1,"Node Criado com sucesso\n",25);
+    //write(1,"Node Criado com sucesso\n",25);
     return 0;
 }
 
@@ -475,20 +475,22 @@ int apaga(char** options) {
     if(!fork()) { execlp("rm","rm",tempout,NULL); }
     kill(nodespid[a],SIGKILL);
     nodes[a] = 0;
-    printf("Node %s removido com sucesso\n",options[1]);
+    //printf("Node %s removido com sucesso\n",options[1]);
     return 0;
 }
 
 /* muda o filtro dum node ***************************************************************************/
-/*
+
 int change(char** options, int flag) {
-    a = atoi(options[1]); // ########## é 1 ?
-    //#######não é preciso fazer nada ao fanoout porque os processos estão em pause(); ?
-    //remove(options[1]); //remover nodo - aqui são feitas as verificações todas
-    create_node(options[1], *options, flag); //criar o novo com a descartar ou não output.
+    int a = atoi(options[1]); 
+    apaga(options); //apaga(nodo x) assumindo que o apaga trata de tudo em condiçoes
+    //options++;
+    node(options, flag); //criar o novo com a descartar ou não output - trabalho feito no interpretador de decifrar o comando
+    printf("Node %s alterado com sucesso\n", options[1]);
+    return 0;
 }
 
-*/
+
 
 /******************************************************************************
  *                      INTERPRETADOR DE COMANDOS                             *
@@ -520,7 +522,13 @@ int interpretador(char* cmdline)
     //####### add change e remove
 
     if (strcmp(options[0], "node") == 0) {
-        return node(options, 0);
+    	//###################### falta isto
+    	// if options[2] != spawn && filter && window && const => output descarta-se
+    	//função para fazer isto:
+    	//fork()
+    	//execlp(...)
+    	//else
+        if(!node(options, 0)) printf("Node criado com sucesso\n");
         //int node(char** options, int flag)
     }
 
@@ -536,14 +544,15 @@ int interpretador(char* cmdline)
         return inject(options);
     }
     else if (strcmp(options[0], "apaga") == 0) {
-        return apaga(options);
+        if(!apaga(options)) printf("removido com sucesso\n");
     }
-    //########## adicionar remove, change
-    else { /* aqui tem de ser o executar um programa normal, e assume-se que nunca metem outputs errados */
-    	//###################### falta isto
-    	//fork()
-    	//execlp(...)
-        return 1;
+    else if (strcmp(options[0], "change") == 0) {
+        return change(options, 0); //está assim só para testes, tem de se ver se o nodo vai ter saida ou não.
+    }
+
+    else { 
+    	//########## adicionar remove, change e por mais bonito :P
+    	printf("Comando inexistente\nTente com Node X filtro <ops..>\nconnect x y (...)\ninject x <ops>\netc...\n");
     }
 
     return 0;
