@@ -438,13 +438,14 @@ int inject(char** options)
 /* remove um nodo 
 remove um nodo da rede
 vai verificar se está a receber algum output ou se é a fonte de algum input e se for o caso remove dessa rede
+já existe uma função remove no stdio.h
 */
-/*
-int remove(char** options) {
 
-    int i,in[10],out[10],t=0, ntmp,j,pid;
-    char *tempin[10], *tempout[10];
-    int a = atoi(options[1]); //########### é o [1] ?
+int apaga(char** options) {
+
+    int i,in[10],out[10],t=0, ntemp,j,pid;
+    char tempin[10], tempout[10];
+    int a = atoi(options[1]);
     //ver se tem in e/ou out no fanout
     if (connections[a] != NULL) { 
         //se sim, in: remover fanout
@@ -453,6 +454,7 @@ int remove(char** options) {
         connections[a] = NULL; 
     } 
     // verificar em todos os outs
+    /* Penso que seja este o codigo, verificar para todos os fannouts se algum tem aquela saida.
     for(i=0;i<MAX_SIZE;i++) {
         if (connections[i] != NULL) { 
             ntemp = connections[i]->numouts;
@@ -460,26 +462,29 @@ int remove(char** options) {
                 if(connections[i]->outs[j] == a) { 
                 //########remover do array aquele valor
                 //########matar fannout e criar nova
-                //out[++t] = connections[i]->outs[j] ; break } //só tem 1 out
+                //out[t] = connections[i]->outs[j] ; break } //só tem 1 out
+                t++;
             }
          } 
     }
-
+	*/
     //remover os fifos e matar o node
     sprintf(tempin,"./tmp/%sin",options[1]);
     sprintf(tempout,"./tmp/%sout",options[1]);
-    if(fork()) { execlp("rm","rm",tempin); }
-    if(fork()) { execlp("rm","rm",tempout); }
+    if(!fork()) { execlp("rm","rm",tempin,NULL); }
+    if(!fork()) { execlp("rm","rm",tempout,NULL); }
     kill(nodespid[a],SIGKILL);
-    node[a] = 0;
+    nodes[a] = 0;
+    printf("Node %s removido com sucesso\n",options[1]);
+    return 0;
 }
-*/
-/* muda o filtro dum node */
+
+/* muda o filtro dum node ***************************************************************************/
 /*
 int change(char** options, int flag) {
     a = atoi(options[1]); // ########## é 1 ?
     //#######não é preciso fazer nada ao fanoout porque os processos estão em pause(); ?
-    remove(options[1]); //remover nodo - aqui são feitas as verificações todas
+    //remove(options[1]); //remover nodo - aqui são feitas as verificações todas
     create_node(options[1], *options, flag); //criar o novo com a descartar ou não output.
 }
 
@@ -530,8 +535,14 @@ int interpretador(char* cmdline)
     else if (strcmp(options[0], "inject") == 0) {
         return inject(options);
     }
-
-    else { /* Comando não existe (erro) */
+    else if (strcmp(options[0], "apaga") == 0) {
+        return apaga(options);
+    }
+    //########## adicionar remove, change
+    else { /* aqui tem de ser o executar um programa normal, e assume-se que nunca metem outputs errados */
+    	//###################### falta isto
+    	//fork()
+    	//execlp(...)
         return 1;
     }
 
