@@ -547,12 +547,8 @@ int interpretador(char* cmdline)
     if (strcmp(options[0], "node") == 0) {
     	//############# se não for nenhum dos filtros, fazer node com flag a 1.
     	//###################### falta isto, algoritmo possivel em baixo
-    	// if options[2] != spawn && filter && window && const => output descarta-se
-    	//função para fazer isto:
-    	//fork()
-    	//execlp(...)
-    	//else
-        if(!node(options, 0)) printf("Node criado com sucesso\n");
+    	// if options[2] != spawn &&  (....) != filter && != window && != const => output descarta-se
+		 if(!node(options, 0)) printf("Node criado com sucesso\n");
         //int node(char** options, int flag)
     }
 
