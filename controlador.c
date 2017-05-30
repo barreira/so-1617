@@ -8,6 +8,8 @@
 #include <signal.h>   // sinais
 #include <sys/wait.h> // wait
 
+#include "readln.h"
+
 #define MAX_SIZE PIPE_BUF
 //########## PIPE_BUF
 
@@ -15,6 +17,7 @@
  *                           VARIÁVEIS GLOBAIS                                *
  ******************************************************************************/
 
+//### provavlmente nao precisamos do primeiro array - confirmar
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
@@ -61,32 +64,6 @@ void init_network()
  ******************************************************************************/
 
 /*
- * @brief Lê uma linha
- *
- * @param fildes Descritor de ficheiro de onde se lê
- * @param buf    Buffer para onde se escreve os dados lidos
- * @param nbyte  Número máximo de bytes a ler
- *
- * @return Retorna o número de bytes lidos
- */
-ssize_t readln(int fildes, void *buf, size_t nbyte) {
-	int i, n;
-
-	for (i=0; i < nbyte; i++) {
-		n = read(fildes, buf+i, 1);
-
-		if (n == -1) return -1; //########## aqui não pode dar -1 ou o inject pára. certo?
-
-		if (n == 0) break;
-
-		if (((char*)buf)[i] == '\n')
-			((char *)buf)[i] = '\0';
-	}
-
-	return ++i;
-}
-
-/*
  * @brief Cria um Fanout (struct)
  *
  * @param pid     PID do processo que corre o fanout
@@ -128,6 +105,11 @@ void stop_fanout() { stopfan = 1; }
  * Definimos como fanout uma função que recebe um input e repete o que conseguir
  * ler desse input para um ou mais outputs recebidos como parâmetro.
  *
+ * Quando se quiser matar um fanout, é recebido um SIGUSR1 que coloca a variável
+ * global stopfan a 1, fazendo parar o ciclo de escrita nas saídas. Com isto,
+ * evita-se matar o processo abruptamente (i.e. com recurso ao SIGKILL) e
+ * interromper o processo de escrita a meio.
+ *
  * @param input   Input do fanout
  * @param outputs Array com os outputs
  * @param numouts Número de outputs
@@ -141,48 +123,31 @@ void fanout(int input, int outputs[], int numouts)
 
     sprintf(aux, "%d", input);
     sprintf(in, "./tmp/%sout", aux);
-    printf("Vou abrir o fifo de input do fannout: %s \n",in);
     fdi = open(in, O_RDONLY);
     
     if (fdi == -1) perror("open fifo in fanout");
 
     // Abrir FIFOs de saída
-    for(i=0;i<numouts;i++) {
-        printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
-    }
 
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
-        //printf("Vou abrir as saidas fifo out do fanout: %s \n",out);
+        
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
     }
+    
     // Escrever nos FIFOs de saída
 
-    //temps
-    char bufs[PIPE_BUF];
-
-    while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) { 
-    	//################o fannout fica bloqueado no read, quando se manda o kill, só no próximo read é que faz exit
-    	//ou seja, obriga a fazer um read extra, ou é preciso uma maneira de não deixar iniciar o while.
-    	//
-    	sprintf(bufs,"fannout leu: %s",buffer);
-    	write(1,bufs,strlen(bufs));
-    	write(1,buffer,bytes);
-    	//
-    	if(!stopfan) { //hack de fazer escrita para sair do read()
-        for (i = 0; i < numouts; i++) {
-        	//
-        	sprintf(bufs,"fannout vai escrever: %s",buffer);
-    		write(1,bufs,strlen(bufs));
-    		//
-            write(fdos[i], buffer, bytes);
-        }
+    while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
+    	if (!stopfan) {
+            for (i = 0; i < numouts; i++) {                
+                write(fdos[i], buffer, bytes);
+            }
     	}
     }
-    //write(1,"Vou fazer exit\n",16);
-    _exit(0); //
+    
+    _exit(0);
 }
 
 
@@ -206,6 +171,7 @@ void fanout(int input, int outputs[], int numouts)
  * @return 0 em caso de sucesso ou 1 em caso de erro
  */
 
+// e.g. node 1 window ...
 int node(char** options, int flag)
 {
     int n;
@@ -213,7 +179,7 @@ int node(char** options, int flag)
     /* Verificar se o nó já existe na rede */
 
     n = atoi(options[1]); // nó de entrada
-    //printf("valor de options[1]: %s \n",options[1]);
+    
     if (nodes[n] != 0) {
         printf("Já existe nó com ID %d\n", n);
         return 1;
@@ -232,34 +198,32 @@ int node(char** options, int flag)
         char in[15], out[15];
         int fdi, fdo;
 
-        sprintf(in, "./tmp/%sin", options[1]); //###########está a escrever lixo
-        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); } //##########está a escrever lixo
+        sprintf(in, "./tmp/%sin", options[1]);
+        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); }
 
         mkfifo(in, 0666);
-        if (!flag) { mkfifo(out, 0666); } //#########descartar output, faz-se na mesma para depois ao remover não dar erro?
+        if (!flag) { mkfifo(out, 0666); }
         
 
         fdi = open(in, O_RDONLY);
 
-        if (!flag) { fdo = open(out, O_WRONLY); } //#######descartar output, faz-se na mesma para depois ao remover não dar erro?
+        if (!flag) { fdo = open(out, O_WRONLY); }
         
         /* Redirecionar para os FIFOs */
 
         dup2(fdi, 0);
-        if (!flag) { dup2(fdo, 1); } //este tem de ficar sempre.
+        if (!flag) { dup2(fdo, 1); }
         
         /* Executar o componente */
 
-        //############ falta mudar o options[2] para ter ./ no inicio
-        //if (!flag) options[2] = ./++options[2].
+        //sprintf(options[2], "./%s", options[2]); //## testar
         execvp(options[2], &options[2]);
-        //execlp("./const","./const","10",NULL);
     }
 
     /* Acrescentar nó à rede */   
 
     nodes[n] = 1;
-    //write(1,"Node Criado com sucesso\n",25);
+    
     return 0;
 }
 
@@ -288,14 +252,14 @@ int connect(char** options, int numoptions)
     n = atoi(options[1]);
 
     numouts = numoptions - 2;
-    int outs[numouts];
+    int outs[numouts]; // ver isto
 
     if (connections[n] != NULL) {
         numouts += connections[n]->numouts;
         int outs[numouts];
 
         for (i = 0; i < connections[n]->numouts; i++) {
-        	outs[++j] = connections[n]->outs[i];
+        	outs[j++] = connections[n]->outs[i];
    		}
 
         kill(connections[n]->pid, SIGUSR1);
@@ -304,14 +268,15 @@ int connect(char** options, int numoptions)
     }
     
     for (i = 2; i < numoptions; i++) {
-        //printf("Options[i] = %s ; i= %d\n",options[i],i);
-        outs[j] = atoi(options[i]);
-        j++;
+        outs[j++] = atoi(options[i]);
     }
 
     pid = fork();
 
-    if (pid == -1) perror("fork no connect");
+    if (pid == -1) {
+        perror("fork no connect");
+        return 1;
+    }
     
     if (pid == 0) {     
         fanout(n, outs, numouts);
@@ -320,7 +285,7 @@ int connect(char** options, int numoptions)
         f = create_fanout(pid, outs, numouts);
         connections[n] = f;
     }
-    //write(1,"Fannout executado com sucesso\n",30);
+    
     return 0;
 }
 
@@ -337,9 +302,8 @@ int connect(char** options, int numoptions)
  *
  * @param options Array com os campos do comando (secções separadas por espaço)
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro, 2 quando o nodo não está conectado
-
- ############ tem de haver uma escrita para abrir os fifos (fannout) todos antes de se poder fazer o disconnect
+ * @return 0 em caso de sucesso ou 1 em caso de erro, 2 quando os nodos não
+ *         estarem conectados
  */
 int disconnect(char** options)
 {
@@ -364,18 +328,19 @@ int disconnect(char** options)
         }
 
         if (!exists) { // A conexão não tem OUT (b) com saída
-            return 2; //########### MSG ERRO?
+            return 2;
         }
 
         if (numouts == 1) {
             kill(connections[a]->pid, SIGUSR1);
-            //hack
+            
             char hk[20];
-            sprintf(hk,"./tmp/%sout",options[1]);
-            int hack = open(hk,O_WRONLY);
-            write(hack,"-",1);
+            sprintf(hk, "./tmp/%sout", options[1]);
+            int hack = open(hk, O_WRONLY);
+            write(hack, "-", 1);
+            
             waitpid(connections[a]->pid, NULL, 0);
-            //write(1,"Mandei matar fannout e recebi wait",40);
+            
             connections[a] = NULL;         
             return 0;
         }
@@ -389,10 +354,17 @@ int disconnect(char** options)
             }
 
             kill(connections[a]->pid, SIGUSR1);
+
+            char hk[20];
+            sprintf(hk, "./tmp/%sout", options[1]);
+            int hack = open(hk, O_WRONLY);
+            write(hack, "-", 1);
+
             waitpid(connections[a]->pid, NULL, 0);
             connections[a] = NULL;
 
-            pid == fork();
+            pid = fork();
+
             if (pid == -1) perror("fork no node");
 
             if (pid == 0) {     
@@ -405,8 +377,7 @@ int disconnect(char** options)
         }
     }
     else { // IN (a) não existe
-    	//printf("Nodes não conectados\n");
-        return 2; //tratar o erro
+        return 2;
     }
 
     return 0;
@@ -423,8 +394,6 @@ int disconnect(char** options)
  *
  * @return 0 em caso de sucesso ou 1 em caso de erro
  */
-
-// ###### não testei
 int inject(char** options)
 {
     int fd, pid;
@@ -435,18 +404,24 @@ int inject(char** options)
     fd = open(in, O_RDONLY);
 
     if (fd == -1) {
-        perror("open");
+        perror("open inject");
         return 1;
     }
 
     pid = fork(); // é preciso guardar o pid nalgum lado? //######## acho que não porque este vai ficar "sempre" a correr, vai ser a fonte de input
 
+    if (pid == -1) {
+        perror("fork inject");
+        return 1;
+    }
+
     if (pid == 0) {
         dup2(fd, 1);
-        //
         execvp(options[2], &options[2]);
+        perror("exec inject");
+        return 1;
     }
-    //#############nunca chega aqui
+
     return 0;
 }
 
@@ -531,7 +506,7 @@ int change(char** options, int flag) {
  */
 int interpretador(char* cmdline)
 {
-    int i = 0;
+    int i = 0, ret;
     char* options[MAX_SIZE];
 
     /* Separa a linha recebida pelos espaços */
@@ -545,32 +520,85 @@ int interpretador(char* cmdline)
     //####### adicionar apaga e change
 
     if (strcmp(options[0], "node") == 0) {
-    	//############# se não for nenhum dos filtros, fazer node com flag a 1.
-    	//###################### falta isto, algoritmo possivel em baixo
-    	// if options[2] != spawn &&  (....) != filter && != window && != const => output descarta-se
-		 if(!node(options, 0)) printf("Node criado com sucesso\n");
-        //int node(char** options, int flag)
+        if (strcmp(options[2], "const") && strcmp(options[2], "filter") && strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
+            ret = node(options, 0); //mudar 1
+
+            if (ret == 0) {
+                printf("Nó criado com sucesso\n");
+            }
+        }
+        else {
+            ret = node(options, 0);
+
+            if (ret == 0) {
+                printf("Nó criado com sucesso\n");
+            }
+        }
+
+        return ret;
     }
 
     else if (strcmp(options[0], "connect") == 0) {
-        return connect(options, i); //######### tratar aqui o resultado 
+        ret = connect(options, i);
+
+        if (ret == 0) {
+            printf("Nós conectados com sucesso\n");
+        }
+
+        return ret;
     }
 
     else if (strcmp(options[0], "disconnect") == 0) {
-        return disconnect(options); //############ tratar aqui o resultado do disconnect 0,1,2
+        ret = disconnect(options);
+
+        if (ret == 0) {
+            printf("Nós disconectados com sucesso\n");
+        }
+        else if (ret == 2) {
+            printf("Nós não estavam conectados\n");
+        }
+
+        return ret;
     }
 
     else if (strcmp(options[0], "inject") == 0) {
-        return inject(options);
-    }
-    else if (strcmp(options[0], "apaga") == 0) {
-        if(!apaga(options)) printf("removido com sucesso\n");
-    }
-    else if (strcmp(options[0], "change") == 0) {
-    				//################ ver se o options[2] não é um dos filtros, se for mandar a flag diferente
-        return change(options, 0); //está assim só para testes, tem de se ver se o nodo vai ter saida ou não.
+        ret = inject(options);
 
+        if (ret == 0) {
+            printf("Inject executado com sucesso\n");
+        }
+
+        return ret;
     }
+/*
+    else if (strcmp(options[0], "apaga") == 0) {
+        ret = apaga(options);
+
+        if (ret == 0) {
+            printf("Nó removido com sucesso\n");
+        }
+        
+        return ret;
+    }
+
+    else if (strcmp(options[0], "change") == 0) {
+        if (strcmp(options[2], "const") && strcmp(options[2], "filter") && strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
+            ret = change(options, 1);
+
+            if (ret == 0) {
+                printf("Comando do nó alterado com sucesso\n");
+            }
+        }
+        else {
+            ret = change(options, 0);
+
+            if (ret == 0) {
+                printf("Comando do nó alterado com sucesso\n");
+            }
+        }
+
+        return ret;
+    }*/
     //TESTES - escreve input e entras aqui, ctrl+d para regressar ao menu
     //escreve sempre no node 1, portanto faz connects sempre com 1 x
 	else if (strcmp(options[0], "input") == 0) {
@@ -585,7 +613,7 @@ int interpretador(char* cmdline)
 		write(1,"Sai do input\n",14);
 	}
 	//FIM TESTES
-    else { 
+    else {
     	//########## adicionar remove, change e por mais bonito :P
     	printf("Comando inexistente\nTente com Node X filtro <ops..>\nconnect x y (...)\ninject x <ops>\netc...\n");
     }

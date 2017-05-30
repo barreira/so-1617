@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <limits.h>
 
+#include "readln.h"
+
 /*window <coluna> <operacao> <linhas>
 Este programa reproduz todas as linhas acrescentando-lhe uma nova coluna com o resultado de uma
 operacão  é calculada sobre os valores da coluna indicada nas linhas anteriores.
@@ -101,7 +103,7 @@ int main(int argc, char const *argv[]){
 		stored[0] = a;
 	}
 
-   while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
+   while((n = readln(0,buffer,PIPE_BUF)) >= 0) {  
       if(n!=0) {     
       //Achar a coluna
       char *ptr = buffer;
@@ -116,7 +118,7 @@ int main(int argc, char const *argv[]){
       res = atoi(print); //guardar valor para inteiro
       novo_valor(res); //adiciona novo valor
       do_op(); //faz as contas e actualiza res(ultado)
-      buffer[n-1] = '\0'; //tirar /n
+      //buffer[n-1] = '\0'; //tirar /n
 	  sprintf(final,"%s:%i\n",buffer,res); //acrescentar resultado fim da linha
 	  write(1,final,strlen(final));
 	}

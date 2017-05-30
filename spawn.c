@@ -6,7 +6,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
-#include "readline.h" //myreadline
+#include <sys/wait.h>
+
+#include "readln.h"
 
 /*spawn <cmd> <args...>
 Este programa reproduz todas as linhas, executando o comando indicado uma vez para cada uma delas,
@@ -53,7 +55,7 @@ int main(int argc, char const *argv[]){
 	}
 
 	//processar input
-   while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
+   while((n = readln(0,buffer,PIPE_BUF)) >= 0) {  
       if(n!=0) {   
     	//Achar a(s) coluna(s)
     	char *ptr = buffer;
@@ -76,7 +78,7 @@ int main(int argc, char const *argv[]){
       	}
 		//pai faz waitpid e guarda exit status
      	waitpid(pid,&status,0);
-     	buffer[n-1] = '\0'; //tirar /n
+     	//buffer[n-1] = '\0'; //tirar /n
       	if(WIFEXITED(status)) { sprintf(final,"%s:%i\n",buffer,WEXITSTATUS(status)); } //adicionar o exit status
 		write(1,final,strlen(final));
 	}

@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <limits.h>
 
+#include "readln.h"
 
 /* Este programa reproduz as linhas acrescentando uma nova coluna sempre com o mesmo valor: 
 utilização ./a.out const
@@ -24,7 +25,7 @@ int main(int argc, char const *argv[]){
 
 	while((n = read(0,buffer,PIPE_BUF)) >= 0) {	
 		if(n!=0) {
-		buffer[n-1] = '\0'; //tirar /n
+			buffer[n-1] = '\0';
 		sprintf(print,"%s:%s\n",buffer,argv[1]); //acrescentar resto :const
 		write(1,print,strlen(print)); //write stdout
 		}

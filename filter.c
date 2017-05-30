@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <limits.h>
 
+#include "readln.h"
+
 
 /*filter <coluna> <operador> <operando>
 Este programa reproduz as linhas que satisfazem uma condicão indicada nos seus argumentos. 
@@ -24,7 +26,6 @@ output:
 
 */
 
-
 int main(int argc, char const *argv[]){
 
    char buffer[PIPE_BUF];
@@ -32,7 +33,7 @@ int main(int argc, char const *argv[]){
    int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut;
    char field[10];
    
-   while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
+   while((n = readln(0,buffer,PIPE_BUF)) >= 0) {  
       if(n!=0) {     
          //Achar a coluna
          char *ptr = buffer;

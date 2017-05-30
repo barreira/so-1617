@@ -1,25 +1,16 @@
 CC = gcc
 CFLAGS = -Wall -g
-OUT = controlador
-OBJS = controlador.o
+#OUT = controlador const filter window spawn
+#OBJS = controlador.c const.c filter.c window.c spawn.c
 
-controlador: $(OBJS)
-	$(CC) $(OBJS) $(CFLAGS) -o $(OUT)
-
-controlador.o: controlador.c
-	cc -c controlador.c
-
-const.o: const.c
-	cc -c const.c
-
-filter.o: filter.c
-	cc -c filter.c
-
-window.o: window.c
-	cc -c window.c
-
-spawn.o: spawn.c
-	cc -c spawn.c		
+all:
+	rm -rf tmp
+	mkdir tmp
+	$(CC) const.c $(CFLAGS) -o const
+	$(CC) filter.c $(CFLAGS) -o filter
+	$(CC) window.c $(CFLAGS) -o window
+	$(CC) spawn.c $(CFLAGS) -o spawn
+	$(CC) controlador.c $(CFLAGS) -o controlador
 
 clean:
 	rm -rf tmp
