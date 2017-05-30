@@ -21,15 +21,29 @@ int main(int argc, char const *argv[]){
 
 	char buffer[PIPE_BUF];
 	char print[PIPE_BUF];
-	int n;
+	char tmp[PIPE_BUF];
+	char *aux;
+
+	int n,i,t;
 
 	while((n = read(0,buffer,PIPE_BUF)) >= 0) {	
 		if(n!=0) {
-			buffer[n-1] = '\0';
-		sprintf(print,"%s:%s\n",buffer,argv[1]); //acrescentar resto :const
-		write(1,print,strlen(print)); //write stdout
-		}
-		//else { pause(); }
+			i=0;
+			t=0;
+			while(i<n) {
+				if(buffer[i] != '\n') { tmp[t] = buffer[i] ; t++; }
+				else {
+					t++;
+					tmp[t] = '\0';
+					sprintf(print,"%s:%s\n",tmp,argv[1]); //acrescentar resto :const
+					write(1,print,strlen(print)); //write stdout
+					tmp[0] = '\0';
+					t=0;
+				}
+				i++;
+	    	}
+	    }
+
 	}
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
