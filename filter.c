@@ -30,34 +30,46 @@ int main(int argc, char const *argv[]){
 
    char buffer[PIPE_BUF];
    char print[PIPE_BUF];
-   int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut;
+   int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut,i,t;
    char field[10];
+   char *tmp;
    
-   while((n = readln(0,buffer,PIPE_BUF)) >= 0) {  
+   while((n = read(0,buffer,PIPE_BUF)) >= 0) {  
       if(n!=0) {     
-         //Achar a coluna
-         char *ptr = buffer;
-         cut = 0;
-         while ( sscanf(ptr, "%10[^:]%n", field, &s) == 1) {
-            cut++;
-            if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
-            ptr += s; /* avançar os characteres lidos */
-            //if ( *ptr != ':' )  {  break; /* falhou*/  }
-            ++ptr; /* salta o : */
-         }
+         i=0;
+         t=0;
+         while(i<n) {
+            if(buffer[i] != '\n') { tmp[t] = buffer[i] ; t++; }
+            else {
+               t++;
+               tmp[t] = '\0';
 
-      //else { pause(); }
-
-      //verifica o argumento e faz a comparação
-      if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,buffer,n);  } 
-      if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,buffer,n); } 
-      if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,buffer,n); }
-      if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,buffer,n); } 
-      if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,buffer,n); }
-      if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
-      }
+               //Achar a coluna
+               char *ptr = tmp;
+               cut = 0;
+               while ( sscanf(ptr, "%10[^:]%n", field, &s) == 1) {
+                  cut++;
+                  if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
+                  ptr += s; /* avançar os characteres lidos */
+                  //if ( *ptr != ':' )  {  break; /* falhou*/  }
+                  ++ptr; /* salta o : */
+               }
+            //verifica o argumento e faz a comparação
+            if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,buffer,n);  } 
+            if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,buffer,n); } 
+            if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,buffer,n); }
+            if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,buffer,n); } 
+            if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,buffer,n); }
+            if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,buffer,n); }
+            
+            tmp[0] = '\0';
+            t=0;
+            }
+            i++;
+            }
+ 
    }
-
+}
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
 
 
