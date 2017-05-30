@@ -123,16 +123,25 @@ void fanout(int input, int outputs[], int numouts)
 
     sprintf(aux, "%d", input);
     sprintf(in, "./tmp/%sout", aux);
+    printf("Vou abrir o fifo de input do fannout: %s \n",in); 
     fdi = open(in, O_RDONLY);
     
     if (fdi == -1) perror("open fifo in fanout");
 
     // Abrir FIFOs de saída
-
+     for(i=0;i<numouts;i++) {
+       printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
+   }
+   //
+	char bufs[PIPE_BUF];
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
-        
+//
+        sprintf(bufs,"fannout leu: %s",buffer);
+   	write(1,bufs,strlen(bufs));
+   	write(1,buffer,bytes);
+//
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
     }
@@ -141,7 +150,11 @@ void fanout(int input, int outputs[], int numouts)
 
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
     	if (!stopfan) {
-            for (i = 0; i < numouts; i++) {                
+            for (i = 0; i < numouts; i++) {    
+//
+            sprintf(bufs,"fannout vai escrever: %s",buffer);
+   			write(1,bufs,strlen(bufs));   
+//
                 write(fdos[i], buffer, bytes);
             }
     	}
@@ -214,13 +227,18 @@ int node(char** options, int flag)
         dup2(fdi, 0);
         if (!flag) { dup2(fdo, 1); }
         
-        /* Executar o componente */
-
-        //sprintf(options[2], "./%s", options[2]); //## testar
-        execvp(options[2], &options[2]);
+        /* Executar o componente e adicionar ./ ao filtro */
+        char tmp[10];
+        sprintf(tmp, "./%s", options[2]); //## testar
+        options[2] = tmp;
+		execvp(options[2], &options[2]);
     }
 
     /* Acrescentar nó à rede */   
+            char tmp[10];
+        sprintf(tmp, "./%s", options[2]); //## testar
+        options[2] = tmp;
+        write(1,options[2],strlen(options[2]));
 
     nodes[n] = 1;
     
@@ -349,7 +367,8 @@ int disconnect(char** options)
 
             for (i = 0; i < connections[a]->numouts; i++) {
                 if (connections[a]->outs[i] != b) {
-                    outs[++j] = connections[a]->outs[i]; 
+                    outs[j] = connections[a]->outs[i]; 
+                    j++;
                 }
             }
 
@@ -521,7 +540,7 @@ int interpretador(char* cmdline)
 
     if (strcmp(options[0], "node") == 0) {
         if (strcmp(options[2], "const") && strcmp(options[2], "filter") && strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
-            ret = node(options, 0); //mudar 1
+            ret = node(options, 1); 
 
             if (ret == 0) {
                 printf("Nó criado com sucesso\n");
