@@ -58,6 +58,15 @@ void init_network()
     }
 }
 
+void desbloqueia(int n)
+{
+    int fd;
+    char fifo[15];
+
+    sprintf(fifo, "./tmp/%dout", n);
+    fd = open(fifo, O_WRONLY);
+    write(fd, "-", 1);
+}
 
 /******************************************************************************
  *                          FUNÇÕES AUXILIARES                                *
@@ -139,8 +148,8 @@ void fanout(int input, int outputs[], int numouts)
         sprintf(out, "./tmp/%sin", aux);
 //
         sprintf(bufs,"fannout leu: %s",buffer);
-   	write(1,bufs,strlen(bufs));
-   	write(1,buffer,bytes);
+   	    write(1,bufs,strlen(bufs));
+   	    write(1,buffer,bytes); // ? "bytes" nem sequer foi iniciliazado
 //
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
@@ -277,7 +286,8 @@ int connect(char** options, int numoptions)
         int outs[numouts];
 
         for (i = 0; i < connections[n]->numouts; i++) {
-        	outs[j++] = connections[n]->outs[i];
+        	outs[j] = connections[n]->outs[i];
+            j++;
    		}
 
         kill(connections[n]->pid, SIGUSR1);
@@ -286,7 +296,8 @@ int connect(char** options, int numoptions)
     }
     
     for (i = 2; i < numoptions; i++) {
-        outs[j++] = atoi(options[i]);
+        outs[j] = atoi(options[i]);
+        j++;
     }
 
     pid = fork();
@@ -351,14 +362,8 @@ int disconnect(char** options)
 
         if (numouts == 1) {
             kill(connections[a]->pid, SIGUSR1);
-            
-            char hk[20];
-            sprintf(hk, "./tmp/%sout", options[1]);
-            int hack = open(hk, O_WRONLY);
-            write(hack, "-", 1);
-            
+            desbloqueia(a);
             waitpid(connections[a]->pid, NULL, 0);
-            
             connections[a] = NULL;         
             return 0;
         }
@@ -373,12 +378,7 @@ int disconnect(char** options)
             }
 
             kill(connections[a]->pid, SIGUSR1);
-
-            char hk[20];
-            sprintf(hk, "./tmp/%sout", options[1]);
-            int hack = open(hk, O_WRONLY);
-            write(hack, "-", 1);
-
+            desbloqueia(a);
             waitpid(connections[a]->pid, NULL, 0);
             connections[a] = NULL;
 
@@ -458,28 +458,33 @@ int apaga(char** options) {
     char tempin[10], tempout[10];
     int a = atoi(options[1]);
     char* tempstr[30];
+
     //ver se tem in e/ou out no fanout
+
     if (connections[a] != NULL) { 
         //se sim, in: remover fanout
         kill(connections[a]->pid, SIGUSR1);
+        desbloqueia(a);
         waitpid(connections[a]->pid, NULL, 0);
         connections[a] = NULL; 
     } 
+
     printf("segmentation fault a seguir?\n");
     // verificar em todos os outs dos fannouts em execução
     //################ CRASHA AQUI
-    for(i=0;i<MAX_SIZE;i++) {
+    for(i = 0; i < MAX_SIZE; i++) {
         if (connections[i] != NULL) { 
             ntemp = connections[i]->numouts;
-            for(j=0;j<ntemp;j++) { //ver dentro dos outs
+
+            for(j = 0; j < ntemp; j++) { //ver dentro dos outs
             	printf("aqui dentro?\n");
                 if(connections[i]->outs[j] == a) { 
-                //está a criar o *options com disconnect x y
-                tempstr[0] = "disconnect";
-                sprintf(tempstr[1],"%d",i);
-                //tempstr[1] = toString(i);
-                tempstr[2] = options[1];
-                disconnect(tempstr);
+                    //está a criar o *options com disconnect x y
+                    tempstr[0] = "disconnect";
+                    sprintf(tempstr[1], "%d", i);
+                    //tempstr[1] = toString(i);
+                    tempstr[2] = options[1];
+                    disconnect(tempstr);
             	}
          	} 
     	}
