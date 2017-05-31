@@ -240,10 +240,10 @@ int add_node(char** options, int flag)
         if (!flag) { dup2(fdo, 1); }
         
         /* Adicionar "./" ao nome do componente e executá-lo */
-
+        if (!flag) {
         char tmp[SMALL_SIZE];
-        sprintf(tmp, "./%s", options[2]); //### testar
-        options[2] = tmp;
+        sprintf(tmp, "./%s", options[2]);
+        options[2] = tmp; }
 		execvp(options[2], &options[2]);
     }
 
