@@ -664,7 +664,9 @@ int change(char** options, int flag) {
  *
  * @param cmdline Comando recebido
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro
+ * @return 0 em caso de sucesso
+ *         1 em caso de erro
+ *         2 em caso de erro na execução do comando
  */
 int interpretador(char* cmdline)
 {
@@ -675,96 +677,109 @@ int interpretador(char* cmdline)
 
     options[i] = strtok(cmdline, " ");
 
-    while (options[i] != NULL) { options[++i] = strtok(NULL, " "); }
+    while (options[i] != NULL) {
+        options[++i] = strtok(NULL, " ");
+    }
 
-    /* Interpreta qual o comando e invoca a função respetiva */
+    /* Interpreta qual o comando, invocando a função respetiva */
 
-    //####### adicionar apaga e change
+    /* Node */
 
     if (strcmp(options[0], "node") == 0) {
         if (strcmp(options[2], "const") && strcmp(options[2], "filter") &&
             strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
 
-            ret = add_node(options, 1); 
-
-            if (ret == 0) { printf("Nó criado com sucesso\n"); }
+            ret = add_node(options, 1);
         }
         else {
             ret = add_node(options, 0);
-
-            if (ret == 0) { printf("Nó criado com sucesso\n"); }
         }
+
+        if (ret == 0) printf("Nó criado com sucesso\n")
 
         return ret;
     }
+
+    /* Connect */
 
     else if (strcmp(options[0], "connect") == 0) {
         ret = connect(options, i);
 
-        if (ret == 0) { printf("Nós conectados com sucesso\n"); }
+        if (ret == 0) printf("Nós conectados com sucesso\n");
 
         return ret;
     }
+
+    /* Disconnect */
 
     else if (strcmp(options[0], "disconnect") == 0) {
         ret = disconnect(options);
 
-        if (ret == 0) { printf("Nós disconectados com sucesso\n"); }
+        if (ret == 0) printf("Nós disconectados com sucesso\n");
         
-        else if (ret == 2) { printf("Nós não estavam conectados\n"); }
+        else if (ret == 2) printf("Erro: Os nós não se encontram conectados\n");
 
         return ret;
     }
+
+    /* Inject */
 
     else if (strcmp(options[0], "inject") == 0) {
         ret = inject(options);
 
-        if (ret == 0) { printf("Inject executado com sucesso\n"); }
+        if (ret == 0) printf("Inject executado com sucesso\n");
 
         return ret;
     }
+
+    /* Remove */
 
     else if (strcmp(options[0], "remove") == 0) {
         ret = remove_node(options);
 
-        if (ret == 0) { printf("Nó removido com sucesso\n"); }
+        if (ret == 0) printf("Nó removido com sucesso\n");
         
         return ret;
     }
+
+    /* Change */
 
     else if (strcmp(options[0], "change") == 0) {
         if (strcmp(options[2], "const") && strcmp(options[2], "filter") &&
             strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
 
             ret = change(options, 1);
-
-            if (ret == 0) { printf("Comando do nó alterado com sucesso\n"); }
         }
         else {
             ret = change(options, 0);
-
-            if (ret == 0) { printf("Comando do nó alterado com sucesso\n"); }
         }
+
+        if (ret == 0) printf("Comando do nó alterado com sucesso\n");
 
         return ret;
     }
-    // TESTES - escreve input e entras aqui, ctrl+d para regressar ao menu
-    // escreve sempre no node 1, portanto faz connects sempre com 1 x
+
+    /* Modo de teste (Ctrl-D para regressar ao menu) */
+
 	else if (strcmp(options[0], "input") == 0) {
 		int fdp, p;
 		char backs[MAX_SIZE];
+
 		fdp = open("./tmp/1in", O_WRONLY);
-		write(1,"MODO DE INPUT\n",14);
-		while(((p = read(0, backs, PIPE_BUF)) > 0)) {
+
+		write (1, "MODO DE INPUT\n", 14);
+        while(((p = read(0, backs, PIPE_BUF)) > 0)) {
 			write(1, backs, p);
 			write(fdp, backs, p);
 		}
-		write(1,"Sai do input\n",14);
+		write (1,"Sai do input\n",14);
 	}
-	// FIM TESTES
+
+    /* Comando lido não corresponde a nenhuma das opções possíveis */
+
     else {
-    	//########## ACABAR ISTO
-    	printf("Comando inexistente\nTente com Node X filtro <ops..>\nconnect x y (...)\ninject x <ops>\netc...\n");
+    	printf("Erro: Comando inexistente\n");
+        return 1;
     }
 
     return 0;
