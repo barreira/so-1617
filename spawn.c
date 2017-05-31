@@ -34,7 +34,7 @@ int main(int argc, char const *argv[]){
 	char field[PIPE_BUF];
 
 	//verificação de erros do numero de argumentos (ou assume-se que o input é sempre correcto?)
-	if(argc < 2) { write(2,"Sem argumentos!!",16); return 2; }
+	//if(argc < 2) { write(2,"Sem argumentos!!",16); return 2; }
 
 	//passar argumentos para array ; remover ./a.out
 	//--argc; ++argv;
