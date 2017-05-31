@@ -17,9 +17,9 @@
  *                           VARIÁVEIS GLOBAIS                                *
  ******************************************************************************/
 
-//############### PODE-SE USAR SO O NODESPID
-int nodes[MAX_SIZE];    // array que indica se nó existe na rede
-int nodespid[MAX_SIZE]; // array com os PIDs dos nós
+//############### PODE-SE USAR SO O NODESPID, cuidado ao alterar se bate certo.
+int nodes[MAX_SIZE];    /* array que indica se nó existe na rede */
+int nodespid[MAX_SIZE]; /* array com os PIDs dos nós */
 
 int stopfan = 0; // serve para parar o fanout (conexão entre os nós) sem ser
                  // necessário fazê-lo abruptamente (i.e. com SIGKILL)
@@ -310,7 +310,9 @@ int connect(char** options, int numoptions)
     pid = fork();
 
     if (pid == -1) { perror("fork no connect"); return 1; }
+
     if (pid == 0) {  fanout(n, outs, numouts); }
+
     else {
         f = create_fanout(pid, outs, numouts);
         connections[n] = f;
@@ -387,9 +389,8 @@ int disconnect(char** options)
 
             if (pid == -1) perror("fork no node");
 
-            if (pid == 0) {     
-                fanout(a, outs, numouts);
-            }
+            if (pid == 0) {  fanout(a, outs, numouts); }
+
             else {
                 f = create_fanout(pid, outs, numouts);
                 connections[a] = f;
@@ -444,7 +445,6 @@ int inject(char** options)
 remove um nodo da rede passado como argumento
 vai verificar se está a receber algum output ou se é a fonte de algum input e se for o caso remove dessa rede
 já existe uma função remove no stdio.h e por isso ficou chamada apaga
-
 
 
 ******************************/
@@ -527,7 +527,7 @@ int change(char** options, int flag) {
     }
     else { /* não é nodo de saida */
     //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
-    //#### alternativa, ver saidas e fazer disconnect e connect de novo.
+    //###### alternativa, ver saidas e fazer disconnect e connect de novo.
     	apaga(options); 
 	   	node(options, flag);
     }
@@ -679,7 +679,7 @@ int main(int argc, char* argv[])
 
     if (argc == 2) {
         fd = open(argv[1], O_RDONLY);
-        //############# Nao testei ler de ficheiro
+        //############# falta testar isto!!
         while (readln(fd, buffer, MAX_SIZE) > 0) {
             interpretador(buffer);
         }
