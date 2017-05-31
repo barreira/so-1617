@@ -132,7 +132,7 @@ void fanout(int input, int outputs[], int numouts)
 
     sprintf(aux, "%d", input);
     sprintf(in, "./tmp/%sout", aux);
-    printf("Vou abrir o fifo de input do fannout: %s \n",in); 
+    //printf("Vou abrir o fifo de input do fannout: %s \n",in); 
     fdi = open(in, O_RDONLY);
     
     if (fdi == -1) perror("open fifo in fanout");
@@ -141,15 +141,13 @@ void fanout(int input, int outputs[], int numouts)
      for(i=0;i<numouts;i++) {
        printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
    }
-   //
-	char bufs[PIPE_BUF];
+
+	
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
 //
-        sprintf(bufs,"fannout leu: %s",buffer);
-   	    write(1,bufs,strlen(bufs));
-   	    write(1,buffer,bytes); // ? "bytes" nem sequer foi iniciliazado
+
 //
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
@@ -160,8 +158,11 @@ void fanout(int input, int outputs[], int numouts)
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
     	if (!stopfan) {
             for (i = 0; i < numouts; i++) {    
-//
-            sprintf(bufs,"fannout vai escrever: %s",buffer);
+//       	
+			 char bufs[PIPE_BUF];
+            sprintf(bufs,"fannout leu: %s de %d\n",buffer,fdi);
+   	    	write(1,bufs,strlen(bufs));
+            sprintf(bufs,"fannout vai escrever: %s no %d\n",buffer,fdos[i]);
    			write(1,bufs,strlen(bufs));   
 //
                 write(fdos[i], buffer, bytes);
@@ -244,10 +245,10 @@ int node(char** options, int flag)
     }
 
     /* Acrescentar nó à rede */   
-            char tmp[10];
-        sprintf(tmp, "./%s", options[2]); //## testar
+        char tmp[10];
+        sprintf(tmp, "./%s", options[2]); 
         options[2] = tmp;
-        write(1,options[2],strlen(options[2]));
+        //write(1,options[2],strlen(options[2]));
 
     nodes[n] = 1;
     
@@ -281,24 +282,33 @@ int connect(char** options, int numoptions)
     numouts = numoptions - 2;
     int outs[numouts]; // ver isto
 
+    /* guardar valores dos outs actuais */
     if (connections[n] != NULL) {
         numouts += connections[n]->numouts;
-        int outs[numouts];
+        //int outs[numouts]; é aqui que f**** tudo, inicializava o array com indice 0 a 0.
+        //printf("Valor numouts: %d e connections[n]->numouts: %d ;\n",numouts,connections[n]->numouts);
 
         for (i = 0; i < connections[n]->numouts; i++) {
         	outs[j] = connections[n]->outs[i];
+        	//printf("sacou o valor do fannout: outs[%d] = %d,\n",j,outs[j]);
             j++;
    		}
 
         kill(connections[n]->pid, SIGUSR1);
+        desbloqueia(n);
         waitpid(connections[n]->pid, NULL, 0);
         connections[n] = NULL;
     }
-    
+    /* adicionar os novos outs */
     for (i = 2; i < numoptions; i++) {
         outs[j] = atoi(options[i]);
+       // printf("Valor de outs[j] final j %d = %d\n",j, outs[j]);
         j++;
     }
+
+    //for(i=0;i<numouts;i++) {
+    //	printf("Valor de outs[%d] = %d",i,outs[i]);
+    //}
 
     pid = fork();
 
@@ -427,7 +437,7 @@ int inject(char** options)
         return 1;
     }
 
-    pid = fork(); // é preciso guardar o pid nalgum lado? //######## acho que não porque este vai ficar "sempre" a correr, vai ser a fonte de input
+    pid = fork(); 
 
     if (pid == -1) {
         perror("fork inject");
@@ -444,13 +454,14 @@ int inject(char** options)
     return 0;
 }
 
-/* remove um nodo 
-remove um nodo da rede
+/* remove um nodo *****
+remove um nodo da rede passado como argumento
 vai verificar se está a receber algum output ou se é a fonte de algum input e se for o caso remove dessa rede
 já existe uma função remove no stdio.h e por isso ficou chamada apaga
 
-//################### está a falhar quando pesquisa nas saidas do fanoout para fazer disconnect
-*/
+
+
+******************************/
 
 int apaga(char** options) {
 
@@ -459,25 +470,20 @@ int apaga(char** options) {
     int a = atoi(options[1]);
     char* tempstr[30];
 
-    //ver se tem in e/ou out no fanout
+    //* verificar se está conectado a algum nodo */
 
     if (connections[a] != NULL) { 
-        //se sim, in: remover fanout
+        /* existe como entrada, é só remover */
         kill(connections[a]->pid, SIGUSR1);
         desbloqueia(a);
         waitpid(connections[a]->pid, NULL, 0);
         connections[a] = NULL; 
     } 
 
-    printf("segmentation fault a seguir?\n");
-    // verificar em todos os outs dos fannouts em execução
-    //################ CRASHA AQUI
     for(i = 0; i < MAX_SIZE; i++) {
         if (connections[i] != NULL) { 
             ntemp = connections[i]->numouts;
-
-            for(j = 0; j < ntemp; j++) { //ver dentro dos outs
-            	printf("aqui dentro?\n");
+            for(j = 0; j < ntemp; j++) { /* verificar todas as saidas existentes nos fannouts */
                 if(connections[i]->outs[j] == a) { 
                     //está a criar o *options com disconnect x y
                     tempstr[0] = "disconnect";
@@ -490,24 +496,28 @@ int apaga(char** options) {
     	}
     }
 
-    //remover os fifos e matar o node
+    /* já está removido de qualquer ligação com o resto da rede, terminar a sua existência e fechar fifos */
     sprintf(tempin,"./tmp/%sin",options[1]);
     sprintf(tempout,"./tmp/%sout",options[1]);
     if(!fork()) { execlp("rm","rm",tempin,NULL); }
     if(!fork()) { execlp("rm","rm",tempout,NULL); }
     kill(nodespid[a],SIGKILL);
-    nodes[a] = 0;
+    nodes[a] = 0; //mover para só um array e meter NULL ou 0.
     printf("Node %s removido com sucesso\n",options[1]);
     return 0;
 }
 
 /* muda o filtro dum node ********************************************************************
 
-//##################### funciona se o nodo não estiver ligado a nada, falha por causa do apaga()
+
 *******/
 
 int change(char** options, int flag) {
     int a = atoi(options[1]); 
+    /* verifica a que nodos está ligado, caso esteja */
+    if(connections[a] != NULL) {
+    	
+    }
     apaga(options); //apaga(nodo x) assumindo que o apaga trata de tudo em condiçoes
     //options++;
     node(options, flag); //criar o novo com a descartar ou não output - trabalho feito no interpretador de decifrar o comando
@@ -594,8 +604,8 @@ int interpretador(char* cmdline)
 
         return ret;
     }
-/*
-    else if (strcmp(options[0], "apaga") == 0) {
+
+    else if (strcmp(options[0], "remove") == 0) {
         ret = apaga(options);
 
         if (ret == 0) {
@@ -622,7 +632,7 @@ int interpretador(char* cmdline)
         }
 
         return ret;
-    }*/
+    }
     //TESTES - escreve input e entras aqui, ctrl+d para regressar ao menu
     //escreve sempre no node 1, portanto faz connects sempre com 1 x
 	else if (strcmp(options[0], "input") == 0) {
