@@ -217,26 +217,34 @@ int add_node(char** options, int flag)
     if (nodespid[n] == -1) perror("fork no node");
     
     if (nodespid[n] == 0) {
-        
-        /* Fazer FIFOs in e out e abri-los */
 
         char in[SMALL_SIZE], out[SMALL_SIZE];
         int fdi, fdo;
 
-        sprintf(in, "./tmp/%sin", options[1]);
-        if (!flag) sprintf(out, "./tmp/%sout", options[1]);
+        /* Criar FIFO in */
 
+        sprintf(in, "./tmp/%sin", options[1]); // string com o nome do FIFO
         mkfifo(in, 0666);
-        if (!flag) mkfifo(out, 0666);
+
+        /* Caso não seja para descartar o output, cria-se o FIFO out */
+
+        if (flag == 0) {
+            sprintf(out, "./tmp/%sout", options[1]); // string com o nome do FIFO
+            mkfifo(out, 0666);
+        }
+        else { /* Caso seja para descartar o output, deve-se usar o /dev/null */
+            strcpy(out, "/dev/null");
+        }
+        
+        /* Abrir o FIFO in e o FIFO out (ou o /dev/null) */
 
         fdi = open(in, O_RDONLY);
-
-        if (!flag) fdo = open(out, O_WRONLY);
+        fdo = open(out, O_WRONLY);
         
-        /* Redirecionar para os FIFOs */
+        /* Redirecionar para os FIFOs (ou /dev/null) */
 
         dup2(fdi, 0);
-        if (!flag) dup2(fdo, 1);
+        dup2(fdo, 1);
         
         /* Adicionar "./" ao nome do componente e executá-lo */
 
