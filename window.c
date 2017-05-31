@@ -104,7 +104,8 @@ int main(int argc, char const *argv[]){
 	}
 
    while((n = readln(0,buffer,PIPE_BUF)) >= 0) {  
-      if(n!=0) {     
+      if(n!=0) {  
+         
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
@@ -112,7 +113,7 @@ int main(int argc, char const *argv[]){
          cut++;
          if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
          ptr += s; /* avançar os characteres lidos */
-         ++ptr; /* salta o : */
+         ++ptr; b/* salta o : */
       }
       //fazer as operações
       res = atoi(print); //guardar valor para inteiro
@@ -122,7 +123,7 @@ int main(int argc, char const *argv[]){
 	  sprintf(final,"%s:%i\n",buffer,res); //acrescentar resultado fim da linha
 	  write(1,final,strlen(final));
 	}
-	//else { pause(); }
++
   }
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
