@@ -8,3 +8,26 @@ nodes a descartar -fork
 ######## makefile
 
 arranjar para compilar todos
+
+# 1 JUNHO #
+
+    - quando se faz "node 1 const 123" + "node 2 tee FICHEIRO_A" + "connect 1 2" + "inject 1 cat FICHEIRO_B",
+    o FICHEIRO_A fica quase todo direito, faltando-lhe apenas a última linha do FICHEIRO_B
+
+    - corrigir todos os filtros e *testá-los*
+
+    - ver se disconnect, remove e change estão a dar bem (testar)
+
+    - leitura do ficheiro de configuração parece estar a dar bem
+
+    - corrigir a makefile
+
+    - criar ficheiros de teste
+
+    - fazer relatório
+
+    # OPCIONAIS: #
+
+    - pôr só um array dos pids
+
+    - colocar leitura servidor/cliente
