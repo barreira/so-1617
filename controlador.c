@@ -224,30 +224,32 @@ int add_node(char** options, int flag)
         int fdi, fdo;
 
         sprintf(in, "./tmp/%sin", options[1]);
-        if (!flag) { sprintf(out, "./tmp/%sout", options[1]); }
+        if (!flag) sprintf(out, "./tmp/%sout", options[1]);
 
         mkfifo(in, 0666);
-        if (!flag) { mkfifo(out, 0666); }
-        
+        if (!flag) mkfifo(out, 0666);
 
         fdi = open(in, O_RDONLY);
 
-        if (!flag) { fdo = open(out, O_WRONLY); }
+        if (!flag) fdo = open(out, O_WRONLY);
         
         /* Redirecionar para os FIFOs */
 
         dup2(fdi, 0);
-        if (!flag) { dup2(fdo, 1); }
+        if (!flag) dup2(fdo, 1);
         
         /* Adicionar "./" ao nome do componente e executá-lo */
+
         if (!flag) {
-        char tmp[SMALL_SIZE];
-        sprintf(tmp, "./%s", options[2]);
-        options[2] = tmp; }
+            char cmd[SMALL_SIZE];
+            sprintf(cmd, "./%s", options[2]);
+            options[2] = cmd;
+        }
+
 		execvp(options[2], &options[2]);
     }
 
-    /* Acrescentar nó à rede */
+    /* Acrescentar o nó à rede */
 
     nodes[n] = 1;
     
