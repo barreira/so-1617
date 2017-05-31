@@ -10,8 +10,8 @@
 
 #include "readln.h"
 
-#define MAX_SIZE PIPE_BUF
-//########## PIPE_BUF
+#define MAX_SIZE   PIPE_BUF //########## PIPE_BUF
+#define SMALL_SIZE 32
 
 
 /******************************************************************************
@@ -72,7 +72,7 @@ void init_network()
 void desbloqueia(int n)
 {
     int fd;
-    char fifo[15];
+    char fifo[SMALL_SIZE];
 
     sprintf(fifo, "./tmp/%dout", n);
     fd = open(fifo, O_WRONLY);
@@ -140,7 +140,7 @@ void stop_fanout()
 void fanout(int input, int outputs[], int numouts)
 {
     int i, fdi, fdos[numouts], bytes;
-    char in[15], out[15], buffer[MAX_SIZE], aux[5];
+    char in[SMALL_SIZE], out[SMALL_SIZE], buffer[MAX_SIZE], aux[SMALL_SIZE];
 
     signal(SIGUSR1, stop_fanout);
 
@@ -220,7 +220,7 @@ int add_node(char** options, int flag)
         
         /* Fazer FIFOs in e out e abri-los */
 
-        char in[15], out[15];
+        char in[SMALL_SIZE], out[SMALL_SIZE];
         int fdi, fdo;
 
         sprintf(in, "./tmp/%sin", options[1]);
@@ -241,7 +241,7 @@ int add_node(char** options, int flag)
         
         /* Adicionar "./" ao nome do componente e executá-lo */
 
-        char tmp[10];
+        char tmp[SMALL_SIZE];
         sprintf(tmp, "./%s", options[2]); //### testar
         options[2] = tmp;
 		execvp(options[2], &options[2]);
@@ -453,7 +453,7 @@ int disconnect(char** options)
 int inject(char** options)
 {
     int fd, pid;
-    char in[15];
+    char in[SMALL_SIZE];
 
     /* Verificar se o nó recebido existe na rede */
 
@@ -508,8 +508,8 @@ int inject(char** options)
 int remove_node(char** options) {
 
     int a, numouts, i, j;
-    char in[10], out[10];
-    char* args[30];
+    char in[SMALL_SIZE], out[SMALL_SIZE];
+    char* args[SMALL_SIZE];
 
     /* Verificar se o nó recebido existe na rede */
 
