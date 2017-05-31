@@ -503,6 +503,7 @@ int apaga(char** options) {
     if(!fork()) { execlp("rm","rm",tempout,NULL); }
     kill(nodespid[a],SIGKILL);
     nodes[a] = 0; //mover para só um array e meter NULL ou 0.
+    printf("valor de nodes[%d] = %d\n",a,nodes[a]);
     printf("Node %s removido com sucesso\n",options[1]);
     return 0;
 }
@@ -514,14 +515,35 @@ int apaga(char** options) {
 
 int change(char** options, int flag) {
     int a = atoi(options[1]); 
-    /* verifica a que nodos está ligado, caso esteja */
+	int totalouts,i,pid;
+	int newouts[10];
+	Fanout f;
+
+    /* verifica se é um nodo de saida */
     if(connections[a] != NULL) {
-    	
+    	totalouts = connections[a]->numouts;
+    	//newouts = connections[a]->outs;
+    	for(i=0;i<totalouts;i++) {
+    		newouts[i] = connections[a]->outs[i];
+    	}
+	
+	    apaga(options); 
+	   	node(options, flag);
+	    /* executa novo fannout */
+	    pid = fork();
+
+	    if (pid == -1) { perror("fork no connect"); return 1; }
+	    if (pid == 0) { fanout(a, newouts, totalouts); }
+	    else {
+	        f = create_fanout(pid, newouts, totalouts);
+	        connections[a] = f;
+	    }
     }
-    apaga(options); //apaga(nodo x) assumindo que o apaga trata de tudo em condiçoes
-    //options++;
-    node(options, flag); //criar o novo com a descartar ou não output - trabalho feito no interpretador de decifrar o comando
-    printf("Node %s alterado com sucesso\n", options[1]);
+    else { /* não é nodo de saida */
+    //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
+    	apaga(options); 
+	   	node(options, flag);
+    }
     return 0;
 }
 
