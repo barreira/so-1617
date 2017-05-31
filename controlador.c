@@ -767,13 +767,13 @@ int interpretador(char* cmdline)
  *
  * O controlador pode ser, opcionalmente, invocado com a referência a um
  * ficheiro de configuração. Neste caso, este ficheiro é lido e os comandos são
- * interpretados. Em todos os casos, de seguida o controlador permanece em
- * execução, à espera que receba mais comandos do stdin.
+ * interpretados.
  *
- * O resultado final da aplicação dos componentes/filtros aos dados injetados é
- * apresentado no stdout.
+ * Em todos os casos, o controlador permanece em execução, à espera que receba
+ * mais comandos do stdin.
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro
+ * @return 0 em caso de sucesso
+ *         1 em caso de erro
  */
 int main(int argc, char* argv[])
 {
