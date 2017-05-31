@@ -10,7 +10,7 @@
  *
  * @return Retorna o número de bytes lidos
  */
-ssize_t readln(int fildes, void *buf, size_t nbyte) {
+ssize_t readln(int fildes, void* buf, size_t nbyte) {
 	int i, n;
 
 	for (i = 0; i < nbyte; i++) {
@@ -18,10 +18,14 @@ ssize_t readln(int fildes, void *buf, size_t nbyte) {
 
 		if (n == -1) return -1;
 
-		if (n == 0) return 0;
+		if (n == 0) {
+            i--;
+            break;
+        }
 
 		if (((char*) buf)[i] == '\n') {
-            ((char *) buf)[i] = '\0';
+            ((char*) buf)[i] = '\0';
+            break;
         }
 	}
 
