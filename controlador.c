@@ -452,7 +452,7 @@ int disconnect(char** options)
  */
 int inject(char** options)
 {
-    int fd, pid;
+    int a, fd, pid;
     char in[SMALL_SIZE];
 
     /* Verificar se o nó recebido existe na rede */
@@ -695,7 +695,7 @@ int interpretador(char* cmdline)
             ret = add_node(options, 0);
         }
 
-        if (ret == 0) printf("Nó criado com sucesso\n")
+        if (ret == 0) printf("Nó criado com sucesso\n");
 
         return ret;
     }
