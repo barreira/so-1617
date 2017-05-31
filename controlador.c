@@ -17,7 +17,7 @@
  *                           VARIÁVEIS GLOBAIS                                *
  ******************************************************************************/
 
-//### provavlmente nao precisamos do primeiro array - confirmar
+//############### PODE-SE USAR SO O NODESPID
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
@@ -139,32 +139,29 @@ void fanout(int input, int outputs[], int numouts)
 
     // Abrir FIFOs de saída
      for(i=0;i<numouts;i++) {
-       printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
+       //printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
    }
 
 	
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
-//
-
-//
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
     }
     
-    // Escrever nos FIFOs de saída
+    /* Escrever nos FIFOs de saída */
 
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
     	if (!stopfan) {
             for (i = 0; i < numouts; i++) {    
-//       	
+/*       	
 			 char bufs[PIPE_BUF];
             sprintf(bufs,"fannout leu: %s de %d\n",buffer,fdi);
    	    	write(1,bufs,strlen(bufs));
             sprintf(bufs,"fannout vai escrever: %s no %d\n",buffer,fdos[i]);
    			write(1,bufs,strlen(bufs));   
-//
+*/
                 write(fdos[i], buffer, bytes);
             }
     	}
@@ -312,14 +309,8 @@ int connect(char** options, int numoptions)
 
     pid = fork();
 
-    if (pid == -1) {
-        perror("fork no connect");
-        return 1;
-    }
-    
-    if (pid == 0) {     
-        fanout(n, outs, numouts);
-    }
+    if (pid == -1) { perror("fork no connect"); return 1; }
+    if (pid == 0) {  fanout(n, outs, numouts); }
     else {
         f = create_fanout(pid, outs, numouts);
         connections[n] = f;
@@ -430,19 +421,14 @@ int inject(char** options)
 
     sprintf(in, "./tmp/%sin", options[1]);
 
-    fd = open(in, O_RDONLY);
+    /* abre fifo in do node para escrita  */
+    fd = open(in, O_WRONLY);
 
-    if (fd == -1) {
-        perror("open inject");
-        return 1;
-    }
+    if (fd == -1) { perror("open inject"); return 1; }
 
     pid = fork(); 
 
-    if (pid == -1) {
-        perror("fork inject");
-        return 1;
-    }
+    if (pid == -1) { perror("fork inject"); return 1; }
 
     if (pid == 0) {
         dup2(fd, 1);
@@ -503,8 +489,8 @@ int apaga(char** options) {
     if(!fork()) { execlp("rm","rm",tempout,NULL); }
     kill(nodespid[a],SIGKILL);
     nodes[a] = 0; //mover para só um array e meter NULL ou 0.
-    printf("valor de nodes[%d] = %d\n",a,nodes[a]);
-    printf("Node %s removido com sucesso\n",options[1]);
+    //printf("valor de nodes[%d] = %d\n",a,nodes[a]);
+    //printf("Node %s removido com sucesso\n",options[1]);
     return 0;
 }
 
@@ -541,6 +527,7 @@ int change(char** options, int flag) {
     }
     else { /* não é nodo de saida */
     //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
+    //#### alternativa, ver saidas e fazer disconnect e connect de novo.
     	apaga(options); 
 	   	node(options, flag);
     }
@@ -579,16 +566,12 @@ int interpretador(char* cmdline)
         if (strcmp(options[2], "const") && strcmp(options[2], "filter") && strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
             ret = node(options, 1); 
 
-            if (ret == 0) {
-                printf("Nó criado com sucesso\n");
-            }
+            if (ret == 0) { printf("Nó criado com sucesso\n"); }
         }
         else {
             ret = node(options, 0);
 
-            if (ret == 0) {
-                printf("Nó criado com sucesso\n");
-            }
+            if (ret == 0) { printf("Nó criado com sucesso\n"); }
         }
 
         return ret;
@@ -597,9 +580,7 @@ int interpretador(char* cmdline)
     else if (strcmp(options[0], "connect") == 0) {
         ret = connect(options, i);
 
-        if (ret == 0) {
-            printf("Nós conectados com sucesso\n");
-        }
+        if (ret == 0) {  printf("Nós conectados com sucesso\n"); }
 
         return ret;
     }
@@ -607,12 +588,9 @@ int interpretador(char* cmdline)
     else if (strcmp(options[0], "disconnect") == 0) {
         ret = disconnect(options);
 
-        if (ret == 0) {
-            printf("Nós disconectados com sucesso\n");
-        }
-        else if (ret == 2) {
-            printf("Nós não estavam conectados\n");
-        }
+        if (ret == 0) { printf("Nós disconectados com sucesso\n"); }
+        
+        else if (ret == 2) { printf("Nós não estavam conectados\n");  }
 
         return ret;
     }
@@ -620,9 +598,7 @@ int interpretador(char* cmdline)
     else if (strcmp(options[0], "inject") == 0) {
         ret = inject(options);
 
-        if (ret == 0) {
-            printf("Inject executado com sucesso\n");
-        }
+        if (ret == 0) {  printf("Inject executado com sucesso\n");  }
 
         return ret;
     }
@@ -630,9 +606,7 @@ int interpretador(char* cmdline)
     else if (strcmp(options[0], "remove") == 0) {
         ret = apaga(options);
 
-        if (ret == 0) {
-            printf("Nó removido com sucesso\n");
-        }
+        if (ret == 0) {  printf("Nó removido com sucesso\n");  }
         
         return ret;
     }
@@ -641,16 +615,12 @@ int interpretador(char* cmdline)
         if (strcmp(options[2], "const") && strcmp(options[2], "filter") && strcmp(options[2], "window") && strcmp(options[2], "spawn")) {
             ret = change(options, 1);
 
-            if (ret == 0) {
-                printf("Comando do nó alterado com sucesso\n");
-            }
+            if (ret == 0) { printf("Comando do nó alterado com sucesso\n"); }
         }
         else {
             ret = change(options, 0);
 
-            if (ret == 0) {
-                printf("Comando do nó alterado com sucesso\n");
-            }
+            if (ret == 0) { printf("Comando do nó alterado com sucesso\n"); }
         }
 
         return ret;
@@ -670,7 +640,7 @@ int interpretador(char* cmdline)
 	}
 	//FIM TESTES
     else {
-    	//########## adicionar remove, change e por mais bonito :P
+    	//########## ACABAR ISTO
     	printf("Comando inexistente\nTente com Node X filtro <ops..>\nconnect x y (...)\ninject x <ops>\netc...\n");
     }
 
