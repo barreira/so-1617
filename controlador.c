@@ -194,7 +194,9 @@ void fanout(int input, int outputs[], int numouts)
  * @param options Array com os campos do comando (secções separadas por espaço)
  * @param flag    Flag que indica se o output do nó deverá ser descartado
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro
+ * @return 0 em caso de sucesso
+ *         1 em caso de erro
+ *         2 caso já exista o nó na rede
  */
 int add_node(char** options, int flag)
 {
@@ -202,11 +204,10 @@ int add_node(char** options, int flag)
 
     /* Verificar se o nó já existe na rede */
 
-    n = atoi(options[1]); // nó de entrada
+    n = atoi(options[1]);
     
     if (nodes[n] != 0) {
-        printf("Já existe nó com ID %d\n", n);
-        return 1;
+        return 2;
     }
 
     /* Criar filho para correr o componente */
@@ -241,7 +242,7 @@ int add_node(char** options, int flag)
         /* Adicionar "./" ao nome do componente e executá-lo */
 
         char tmp[10];
-        sprintf(tmp, "./%s", options[2]); //## testar
+        sprintf(tmp, "./%s", options[2]); //### testar
         options[2] = tmp;
 		execvp(options[2], &options[2]);
     }
@@ -270,7 +271,8 @@ int add_node(char** options, int flag)
  * @param options    Array com campos do comando (secções separadas por espaço)
  * @param numoptions Tamanho do array com os campos do comando (options)
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro 
+ * @return 0 em caso de sucesso
+ *         1 em caso de erro 
  */
 int connect(char** options, int numoptions)
 {
@@ -347,8 +349,9 @@ int connect(char** options, int numoptions)
  *
  * @param options Array com os campos do comando (secções separadas por espaço)
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro, 2 quando os nodos não
- *         estarem conectados
+ * @return 0 em caso de sucesso
+ *         1 em caso de erro
+ *         2 caso os nós não estejam previamente conectados
  */
 int disconnect(char** options)
 {
@@ -443,12 +446,22 @@ int disconnect(char** options)
  *
  * @param options Array com os campos do comando (secções separadas por espaço)
  *
- * @return 0 em caso de sucesso ou 1 em caso de erro
+ * @return 0 em caso de sucesso
+ *         1 em caso de erro
+ *         2 caso não exista o nó na rede
  */
 int inject(char** options)
 {
     int fd, pid;
     char in[15];
+
+    /* Verificar se o nó recebido existe na rede */
+
+    a = atoi(options[1]);
+
+    if (nodes[a] == 0) {
+        return 2;
+    }
 
     /* Cria-se a string do FIFO IN do nó recebido, abrindo-o para escrita */
 
