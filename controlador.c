@@ -518,7 +518,7 @@ int inject(char** options)
  */
 int remove_node(char** options) {
 
-    int a, numouts, i, j, f1, f2;
+    int a, numouts, i, j, f1, f2, devnull;
     char in[SMALL_SIZE], out[SMALL_SIZE], tmp[SMALL_SIZE];
     char* args[3];
 
@@ -581,6 +581,9 @@ int remove_node(char** options) {
     if (f1 == -1) { perror("fork remove in"); return 1; }
 
     if (f1 == 0) {
+        devnull = open("/dev/null", O_WRONLY);
+        dup2(devnull, 1); // output para /dev/null
+        dup2(devnull, 2); // stderr para /dev/null        
         execlp("rm", "rm", in, NULL);
     }
 
@@ -589,6 +592,9 @@ int remove_node(char** options) {
     if (f2 == -1) { perror("fork remove out"); return 1; } 
 
     if (f2 == 0) {
+        devnull = open("/dev/null", O_WRONLY);
+        dup2(devnull, 1); // output para /dev/null
+        dup2(devnull, 2); // putput para /dev/null
         execlp("rm", "rm", out, NULL);
     }
 
