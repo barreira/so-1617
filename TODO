@@ -9,16 +9,6 @@
 
     a solução é por um "\n" no fim - atençao com isto ao criar ficheiros de teste.
 
-    - ver se disconnect, remove e change estão a dar bem (testar)
-
-     # depois de um connect x y e disconnect xy e connect de novo xy por algum motivo a passagem de info não fica direita, acho que foi assim que reparei nesta ordem.
-     (reparei agora ao fazer um ps que provavelmente deu mal porque tinha os processos abertos, testa mais exaustivamente sff.)
-
-    - no apaga ver como se faz a string para mandar como opção, 
-
-    - change se tiver connectado não funciona direito, testar melhor.
-
-
     - fazer relatório
 
     # OPCIONAIS: #
@@ -28,20 +18,20 @@
     - colocar leitura servidor/cliente
 
 
-    ##### ERROS
+    ##### ERROS CONHECIDOS
 
-    1) não se pode fazer connect 1 2 e depois connect 1 3 (os fifos n abriram nas duas pontas - o desbloqueia(n) não funciona porque ia escrever -, mas seria uma solução.
-    tem de se fazer connect 1 2 3
+    1) não se pode fazer connect 1 2 e depois connect 1 3 (FUNCIONA, MAS, na primeira linha vai aparecer o "-" do desbloqueia.
 
-    2) connect 1 2 e disconnect 1 2 e depois de novo connect 1 2 passam informações erradas, não sei porquê.
-
-    3) no change se o no estiver sem nada, funciona bem, caso contrário penso que bloqueia nos fifos.
-
-    4) a sequencia da redeteste.txt dá erro, escreve mas o que escreve nao bate certo (os filtros metem dirieto, mas antes passa mal)
+    2) não se pode fazer connect 1 2 ; disconnect 1 2; connect 1 2; FUNCIONA, MAS, na primeira linha vai aparecer o "-" do desbloqueia.
 
 
-    ###### MAIS RECENTE:
+    ###### MAIS RECENTE PARA CORRIGIR:
 
     1) ler de ficheiro tem de ser sequencial a executar os comandos
 
-    2) no change por algum motivo não está a criar o nodo (ou os fifos pelo menos)
+    2)  a) no change por algum motivo está a mandar a flag para descartar o output. (nodo sem conexões) - se ficar direito aparece uma solução para o prob abaixo.
+        b) no change ao fazer com nos conectados eles perdem a ligação. (erro da linha 640, salco erro)
+            - solução possivel, ver as conexões, fazer disconnects, criar nodo, e fazer connects de novo.
+
+    ##NOTAS
+    usar para o inject da rede do enunciado o input.txt porque o log.txt vai ser usado num dos nodos do enunciado.
