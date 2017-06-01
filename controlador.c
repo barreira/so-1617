@@ -518,7 +518,7 @@ int inject(char** options)
 int remove_node(char** options) {
 
     int a, numouts, i, j;
-    char in[SMALL_SIZE], out[SMALL_SIZE];
+    char in[SMALL_SIZE], out[SMALL_SIZE], tmp[SMALL_SIZE];
     char* args[3];
 
     /* Verificar se o nó recebido existe na rede */
