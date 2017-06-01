@@ -1,0 +1,7 @@
+node 1 const 111
+node 2 const 222
+inject 2 cat input.txt
+remove 2
+node 2 const weeeeeeeeeeeeee
+connect 1 2
+inject 1 cat input.txt
