@@ -519,7 +519,7 @@ int remove_node(char** options) {
 
     int a, numouts, i, j;
     char in[SMALL_SIZE], out[SMALL_SIZE];
-    char* args[SMALL_SIZE];
+    char *args[SMALL_SIZE];
 
     /* Verificar se o nó recebido existe na rede */
 
@@ -543,22 +543,31 @@ int remove_node(char** options) {
     /* Percorrer todas as conexões da rede para encontrar aquelas que têm o nó
        que queremos remover como OUT */
 
+    //###### CONTINUA A DAR SEG FAULT
     for (i = 0; i < MAX_SIZE; i++) {
         if (connections[i] != NULL) { 
             numouts = connections[i]->numouts;
+            //printf("numouts = %d",numouts);
 
-            for (j = 0; j < numouts; j++) {
-
+            for(j=0; j < numouts ; j++ ) {
+                //printf("j= %d i= %d\n",j,i);
                 /* Caso uma conexão tenha o nó como OUT, faz-se o disconnect
                    entre esse nó e o nó da entrada dessa conexão */
-
-                if (connections[i]->outs[j] == a) {
-
+               // printf("j= %d ; connections[i]->outs[0] = %d\n",j, connections[i]->outs[0]);
+                //printf("j= %d ; connections[i]->outs[1] = %d\n",j, connections[i]->outs[1]);
+                //printf("j= %d ; connections[i]->outs[2] = %d\n",j, connections[i]->outs[2]);
+                //write(1,"seg fault\n",9);
+                //printf("j= %d vai entrar no if",j);
+                if (connections[i]->outs[j] == a && j < numouts-1) {
+                    //printf("j= %d\n",j);
                     /* Criar array de options do disconnect e sua executá-lo */
+                    //printf("disconnect:\n");
+                    //############################################################################ é aqui ao criar o options!!
 
-                    args[0] = "disconnect";
-                    sprintf(args[1], "%d", i);
-                    args[2] = options[1];
+                    //sprintf(args, "disconnect %d %d", i, j); //isto aqui resolver
+
+                    //args[2] = options[1];
+                    //printf("disconnect run:\n");
                     disconnect(args);
             	}
          	} 
@@ -572,10 +581,10 @@ int remove_node(char** options) {
     sprintf(out, "./tmp/%sout", options[1]);
     
     if (fork() == 0) execlp("rm", "rm", in, NULL);
-    else perror("fork remove in");
+   // perror("fork remove in"); #faz print disto porque tá no else.
 
     if (fork() == 0) execlp("rm", "rm", out, NULL);
-    else perror("fork remove out");
+    //else perror("fork remove out");
 
     kill(nodespid[a], SIGKILL);
     nodes[a] = 0; // array dos nós da rede deixa de ter o nó que foi removido
@@ -630,8 +639,8 @@ int change(char** options, int flag) {
         /* Remover o nó antigo da rede e adicionar um nó que executará o novo
            comando */
 
-	    remove_node(options); 
-	   	add_node(options, flag);
+	    if(!remove_node(options)) add_node(options, flag);
+	   
 
 	    /* Criar um processo que executará a conexão (fanout) relativa à
            execução do novo comando do nó */
@@ -656,8 +665,7 @@ int change(char** options, int flag) {
     // #ver isto
     //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
     //###### alternativa, ver saidas e fazer disconnect e connect de novo.
-    	remove_node(options); 
-	   	add_node(options, flag);
+    if(!remove_node(options)) add_node(options, flag);
     }
 
     return 0;
