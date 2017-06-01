@@ -426,7 +426,7 @@ int disconnect(char** options)
 
             pid = fork();
 
-            if (pid == -1) { perror("fork no node"); return 1; }
+            if (pid == -1) { perror("fork node"); return 1; }
 
             if (pid == 0) {
                 fanout(a, outs, numouts);
@@ -517,7 +517,7 @@ int inject(char** options)
  */
 int remove_node(char** options) {
 
-    int a, numouts, i, j;
+    int a, numouts, i, j, f1, f2;
     char in[SMALL_SIZE], out[SMALL_SIZE], tmp[SMALL_SIZE];
     char* args[3];
 
@@ -545,43 +545,27 @@ int remove_node(char** options) {
 
     for (i = 0; i < MAX_SIZE; i++) {
         if (connections[i] != NULL) { 
+            
             numouts = connections[i]->numouts;
-            //printf("numouts = %d",numouts);
 
             for(j = 0; j < numouts ; j++) {
-                //printf("j= %d i= %d\n",j,i);
 
                 /* Caso uma conexão tenha o nó como OUT, faz-se o disconnect
                    entre esse nó e o nó da entrada dessa conexão */
 
-                // printf("j= %d ; connections[i]->outs[0] = %d\n",j, connections[i]->outs[0]);
-                // printf("j= %d ; connections[i]->outs[1] = %d\n",j, connections[i]->outs[1]);
-                // printf("j= %d ; connections[i]->outs[2] = %d\n",j, connections[i]->outs[2]);
-                // write(1,"seg fault\n",9);
-                // printf("j= %d vai entrar no if",j);
                 if (connections[i]->outs[j] == a) {
-                    // printf("j= %d\n",j);
 
                     /* Criar array de options do disconnect e sua executá-lo */
                     
-                    // printf("disconnect:\n");
-                    // ############################################################################ é aqui ao criar o options!!
-
-                    // sprintf(args, "disconnect %d %d", i, j); //isto aqui resolver
-
-                    // args[2] = options[1];
-                    // printf("disconnect run:\n");
-
-                    // disconnect i j
             	    args[0] = strdup("disconnect");
                     sprintf(tmp, "%d", i);
                     args[1] = strdup(tmp);
                     args[2] = strdup(options[1]);
 
-                    disconnect(args);
+                    disconnect(args); // disconnect i j
                     break;
-		}
-             } 
+                }
+            } 
     	}
     }
 
@@ -591,18 +575,19 @@ int remove_node(char** options) {
     sprintf(in, "./tmp/%sin", options[1]);
     sprintf(out, "./tmp/%sout", options[1]);
     
-    if (fork() == 0) {
-        //int devNull = open("/dev/null", O_WRONLY); 
-        //dup2(devNull,1); //mandar output para /dev/null
-        //dup2(devNull,2); //stderr putput para /dev/null
+    f1 = fork();
+
+    if (f1 == -1) { perror("fork remove in"); return 1; }
+
+    if (f1 == 0) {
         execlp("rm", "rm", in, NULL);
     }
-   // perror("fork remove in"); #faz print disto porque tá no else.
 
-    if (fork() == 0) {
-        //int devNull = open("/dev/null", O_WRONLY); 
-        //dup2(devNull,1); //mandar output para /dev/null
-       // dup2(devNull,2); //stderr putput para /dev/null
+    f2 = fork();
+
+    if (f2 == -1) { perror("fork remove out"); return 1; } 
+
+    if (f2 == 0) {
         execlp("rm", "rm", out, NULL);
     }
 
@@ -659,18 +644,14 @@ int change(char** options, int flag) {
         /* Remover o nó antigo da rede e adicionar um nó que executará o novo
            comando */
 
-	    if(!remove_node(options)) add_node(options, flag);
-	   
+	    if (remove_node(options) == 0) add_node(options, flag);
 
 	    /* Criar um processo que executará a conexão (fanout) relativa à
            execução do novo comando do nó */
 
 	    pid = fork();
 
-	    if (pid == -1) {
-            perror("fork change");
-            return 1;
-        }
+	    if (pid == -1) { perror("fork change"); return 1; }
 
 	    if (pid == 0) {
             fanout(a, outs, numouts);
@@ -682,16 +663,14 @@ int change(char** options, int flag) {
 	    }
     }
     else { /* A saída do nó recebido não está ligada a mais nenhum nó da rede */
-    // #ver isto
-    //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
-    //###### alternativa, ver saidas e fazer disconnect e connect de novo.
-    if(!remove_node(options)) add_node(options, flag);
-    
+        // #ver isto
+        //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
+        //###### alternativa, ver saidas e fazer disconnect e connect de novo.
+        if (remove_node(options) == 0) add_node(options, flag);
     }
 
     return 0;
 }
-
 
 
 /******************************************************************************
