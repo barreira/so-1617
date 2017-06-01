@@ -592,17 +592,17 @@ int remove_node(char** options) {
     sprintf(out, "./tmp/%sout", options[1]);
     
     if (fork() == 0) {
-        //int devNull = open("/dev/null", O_WRONLY); 
-        //dup2(devNull,1); //mandar output para /dev/null
-        //dup2(devNull,2); //stderr putput para /dev/null
+        int devNull = open("/dev/null", O_WRONLY); 
+        dup2(devNull,1); //mandar output para /dev/null
+        dup2(devNull,2); //stderr putput para /dev/null
         execlp("rm", "rm", in, NULL);
     }
    // perror("fork remove in"); #faz print disto porque tá no else.
 
     if (fork() == 0) {
-        //int devNull = open("/dev/null", O_WRONLY); 
-        //dup2(devNull,1); //mandar output para /dev/null
-       // dup2(devNull,2); //stderr putput para /dev/null
+        int devNull = open("/dev/null", O_WRONLY); 
+        dup2(devNull,1); //mandar output para /dev/null
+        dup2(devNull,2); //stderr putput para /dev/null
         execlp("rm", "rm", out, NULL);
     }
 
