@@ -544,40 +544,22 @@ int remove_node(char** options) {
        que queremos remover como OUT */
 
     for (i = 0; i < MAX_SIZE; i++) {
-        if (connections[i] != NULL) { 
-            numouts = connections[i]->numouts;
-            //printf("numouts = %d",numouts);
+        if (connections[i] != NULL) {
 
-            for(j = 0; j < numouts ;j++) {
-                //printf("j= %d i= %d\n",j,i);
+            numouts = connections[i]->numouts;
+
+            for(j = 0; j < numouts ; j++) {
 
                 /* Caso uma conexão tenha o nó como OUT, faz-se o disconnect
                    entre esse nó e o nó da entrada dessa conexão */
 
-                // printf("j= %d ; connections[i]->outs[0] = %d\n",j, connections[i]->outs[0]);
-                // printf("j= %d ; connections[i]->outs[1] = %d\n",j, connections[i]->outs[1]);
-                // printf("j= %d ; connections[i]->outs[2] = %d\n",j, connections[i]->outs[2]);
-                // write(1,"seg fault\n",9);
-                // printf("j= %d vai entrar no if",j);
-                if (connections[i]->outs[j] == a && j < numouts-1) {
-                    // printf("j= %d\n",j);
-
-                    /* Criar array de options do disconnect e sua executá-lo */
-                    
-                    // printf("disconnect:\n");
-                    // ############################################################################ é aqui ao criar o options!!
-
-                    // sprintf(args, "disconnect %d %d", i, j); //isto aqui resolver
-
-                    // args[2] = options[1];
-                    // printf("disconnect run:\n");
-
-                    // disconnect i j
+                if (connections[i]->outs[j] == a) {
                     strcpy(args[0], "disconnect");
                     sprintf(args[1], "%d", i);
-                    sprintf(args[2], "%d", j);
+                    sprintf(args[2], "%d", options[1]);
 
                     disconnect(args);
+                    break;
             	}
          	} 
     	}
