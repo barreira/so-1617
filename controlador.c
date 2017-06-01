@@ -580,11 +580,20 @@ int remove_node(char** options) {
     sprintf(in, "./tmp/%sin", options[1]);
     sprintf(out, "./tmp/%sout", options[1]);
     
-    if (fork() == 0) execlp("rm", "rm", in, NULL);
+    if (fork() == 0) {
+        //int devNull = open("/dev/null", O_WRONLY); 
+        //dup2(devNull,1); //mandar output para /dev/null
+        //dup2(devNull,2); //stderr putput para /dev/null
+        execlp("rm", "rm", in, NULL);
+    }
    // perror("fork remove in"); #faz print disto porque tá no else.
 
-    if (fork() == 0) execlp("rm", "rm", out, NULL);
-    //else perror("fork remove out");
+    if (fork() == 0) {
+        //int devNull = open("/dev/null", O_WRONLY); 
+        //dup2(devNull,1); //mandar output para /dev/null
+       // dup2(devNull,2); //stderr putput para /dev/null
+        execlp("rm", "rm", out, NULL);
+    }
 
     kill(nodespid[a], SIGKILL);
     nodes[a] = 0; // array dos nós da rede deixa de ter o nó que foi removido
@@ -639,7 +648,8 @@ int change(char** options, int flag) {
         /* Remover o nó antigo da rede e adicionar um nó que executará o novo
            comando */
 
-	    if(!remove_node(options)) add_node(options, flag);
+	    remove_node(options); 
+        add_node(options, flag);
 	   
 
 	    /* Criar um processo que executará a conexão (fanout) relativa à
@@ -665,7 +675,8 @@ int change(char** options, int flag) {
     // #ver isto
     //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
     //###### alternativa, ver saidas e fazer disconnect e connect de novo.
-    if(!remove_node(options)) add_node(options, flag);
+    remove_node(options);
+    add_node(options, flag);
     }
 
     return 0;
