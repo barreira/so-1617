@@ -21,10 +21,8 @@ int main(int argc, char const *argv[]){
 
 	char buffer[PIPE_BUF];
 	char print[PIPE_BUF];
-	char tmp[PIPE_BUF];
-	char *aux;
 
-	int n,i,t;
+	int n;
 
 	while((n = readln(0,buffer,PIPE_BUF)) >= 0) {	
 		if(n!=0) {
@@ -32,7 +30,6 @@ int main(int argc, char const *argv[]){
 		sprintf(print,"%s:%s\n",buffer,argv[1]); //acrescentar resto :const
 		write(1,print,strlen(print)); //write stdout
 				
-
 	   }
 
 	}
