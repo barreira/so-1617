@@ -113,7 +113,7 @@ int main(int argc, char const *argv[]){
          cut++;
          if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
          ptr += s; /* avançar os characteres lidos */
-         ++ptr; b/* salta o : */
+         ++ptr; /* salta o : */
       }
       //fazer as operações
       res = atoi(print); //guardar valor para inteiro
@@ -123,7 +123,7 @@ int main(int argc, char const *argv[]){
 	  sprintf(final,"%s:%i\n",buffer,res); //acrescentar resultado fim da linha
 	  write(1,final,strlen(final));
 	}
-+
+
   }
 
   return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
