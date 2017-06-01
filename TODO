@@ -29,9 +29,13 @@
 
     1) ler de ficheiro tem de ser sequencial a executar os comandos
 
-    2)  a) no change por algum motivo está a mandar a flag para descartar o output. (nodo sem conexões) - se ficar direito aparece uma solução para o prob abaixo.
+    2)  a) no change por algum motivo está a mandar a flag para descartar o output. (nodo sem conexões) - se ficar direito aparece uma solução para o prob abaixo. ; confirma
         b) no change ao fazer com nos conectados eles perdem a ligação. (erro da linha 640, salco erro)
             - solução possivel, ver as conexões, fazer disconnects, criar nodo, e fazer connects de novo.
 
+
+
     ##NOTAS
     usar para o inject da rede do enunciado o input.txt porque o log.txt vai ser usado num dos nodos do enunciado.
+
+    caso de teste útil ? ver algum user no passwd? sei lá, alguma ideia?
