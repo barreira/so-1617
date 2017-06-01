@@ -573,14 +573,14 @@ int remove_node(char** options) {
                     // printf("disconnect run:\n");
 
                     // disconnect i j
-                    strcpy(args[0], "disconnect");
-                    sprintf(args[1], "%d", i);
-                    strcpy(args[2], options[1]);
+            	    args[0] = strdup("disconnect");
+                    snprintf(args[1], SMALL_SIZE, "%d", i);
+                    args[2] = strdup(options[1]);
 
                     disconnect(args);
-                    break;
-            	}
-         	} 
+                    break;	
+		}
+             } 
     	}
     }
 
