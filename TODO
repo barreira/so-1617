@@ -7,13 +7,16 @@
     se fizer 2 injects seguidos, ele junta a nova linha no fim da anterior, ou seja ele não mete a última linha porque não tem \n
     é o readline o culpado provavelmente.
 
-    a solução é por um \n no fim
+    a solução é por um "\n" no fim - atençao com isto ao criar ficheiros de teste.
 
     - ver se disconnect, remove e change estão a dar bem (testar)
 
-     # depois de um connect x y e disconnect xy e connect de novo xy por algum motivo a passagem de info não fica direita.
+     # depois de um connect x y e disconnect xy e connect de novo xy por algum motivo a passagem de info não fica direita, acho que foi assim que reparei nesta ordem.
+     (reparei agora ao fazer um ps que provavelmente deu mal porque tinha os processos abertos, testa mais exaustivamente sff.)
 
-    - no apaga ver como se faz a string para mandar como opção, change se tiver connectado não funciona direito, testar melhor.
+    - no apaga ver como se faz a string para mandar como opção, 
+
+    - change se tiver connectado não funciona direito, testar melhor.
 
 
     - fazer relatório
@@ -27,5 +30,9 @@
 
     ##### ERROS
 
-    não se pode fazer connect 1 2 e depois connect 1 3 (os fifos n abriram nas duas pontas - o desbloqueia(n) não funciona porque ia escrever -, mas seria uma solução.
+    1) não se pode fazer connect 1 2 e depois connect 1 3 (os fifos n abriram nas duas pontas - o desbloqueia(n) não funciona porque ia escrever -, mas seria uma solução.
     tem de se fazer connect 1 2 3
+
+    2) connect 1 2 e disconnect 1 2 e depois de novo connect 1 2 passam informações erradas, não sei porquê.
+
+    3) no change se o no estiver sem nada, funciona bem, caso contrário penso que bloqueia nos fifos.
