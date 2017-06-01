@@ -519,7 +519,7 @@ int remove_node(char** options) {
 
     int a, numouts, i, j;
     char in[SMALL_SIZE], out[SMALL_SIZE];
-    char *args[SMALL_SIZE];
+    char args[3][SMALL_SIZE];
 
     /* Verificar se o nó recebido existe na rede */
 
@@ -543,31 +543,40 @@ int remove_node(char** options) {
     /* Percorrer todas as conexões da rede para encontrar aquelas que têm o nó
        que queremos remover como OUT */
 
-    //###### CONTINUA A DAR SEG FAULT
     for (i = 0; i < MAX_SIZE; i++) {
         if (connections[i] != NULL) { 
             numouts = connections[i]->numouts;
             //printf("numouts = %d",numouts);
 
-            for(j=0; j < numouts ; j++ ) {
+            for(j = 0; j < numouts ;j++) {
                 //printf("j= %d i= %d\n",j,i);
+
                 /* Caso uma conexão tenha o nó como OUT, faz-se o disconnect
                    entre esse nó e o nó da entrada dessa conexão */
-               // printf("j= %d ; connections[i]->outs[0] = %d\n",j, connections[i]->outs[0]);
-                //printf("j= %d ; connections[i]->outs[1] = %d\n",j, connections[i]->outs[1]);
-                //printf("j= %d ; connections[i]->outs[2] = %d\n",j, connections[i]->outs[2]);
-                //write(1,"seg fault\n",9);
-                //printf("j= %d vai entrar no if",j);
+
+                // printf("j= %d ; connections[i]->outs[0] = %d\n",j, connections[i]->outs[0]);
+                // printf("j= %d ; connections[i]->outs[1] = %d\n",j, connections[i]->outs[1]);
+                // printf("j= %d ; connections[i]->outs[2] = %d\n",j, connections[i]->outs[2]);
+                // write(1,"seg fault\n",9);
+                // printf("j= %d vai entrar no if",j);
                 if (connections[i]->outs[j] == a && j < numouts-1) {
-                    //printf("j= %d\n",j);
+                    // printf("j= %d\n",j);
+
                     /* Criar array de options do disconnect e sua executá-lo */
-                    //printf("disconnect:\n");
-                    //############################################################################ é aqui ao criar o options!!
+                    
+                    // printf("disconnect:\n");
+                    // ############################################################################ é aqui ao criar o options!!
 
-                    //sprintf(args, "disconnect %d %d", i, j); //isto aqui resolver
+                    // sprintf(args, "disconnect %d %d", i, j); //isto aqui resolver
 
-                    //args[2] = options[1];
-                    //printf("disconnect run:\n");
+                    // args[2] = options[1];
+                    // printf("disconnect run:\n");
+
+                    // disconnect i j
+                    strcpy(args[0], "disconnect");
+                    sprintf(args[1], "%d", i);
+                    sprintf(args[2], "%d", j);
+
                     disconnect(args);
             	}
          	} 
