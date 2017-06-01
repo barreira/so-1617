@@ -10,7 +10,7 @@
 
 #include "readln.h"
 
-#define MAX_SIZE   PIPE_BUF //########## PIPE_BUF
+#define MAX_SIZE   PIPE_BUF
 #define SMALL_SIZE 32
 
 
@@ -18,9 +18,10 @@
  *                           VARIÁVEIS GLOBAIS                                *
  ******************************************************************************/
 
-//############### PODE-SE USAR SO O NODESPID, cuidado ao alterar se bate certo.
-int nodes[MAX_SIZE];    /* array que indica se nó existe na rede */
-int nodespid[MAX_SIZE]; /* array com os PIDs dos nós */
+int busy = 0; // indica se se está a processar um comando (main e interpretador)
+
+int nodes[MAX_SIZE];    // array que indica se nó existe na rede
+int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
 int stopfan = 0; // serve para parar o fanout (conexão entre os nós) sem ser
                  // necessário fazê-lo abruptamente (i.e. com SIGKILL)
@@ -688,7 +689,7 @@ int change(char** options, int flag) {
  */
 int interpretador(char* cmdline)
 {
-    int i = 0, ret;
+    int i = 0, ret = 0;
     char* options[MAX_SIZE];
 
     /* Separa a linha recebida pelos espaços */
@@ -714,8 +715,7 @@ int interpretador(char* cmdline)
         }
 
         if (ret == 0) printf("Nó criado com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: Já existe o nó na rede\n");
     }
 
     /* Connect */
@@ -724,8 +724,7 @@ int interpretador(char* cmdline)
         ret = connect(options, i);
 
         if (ret == 0) printf("Nós conectados com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: Os nós já se encontram conectados\n");
     }
 
     /* Disconnect */
@@ -734,10 +733,7 @@ int interpretador(char* cmdline)
         ret = disconnect(options);
 
         if (ret == 0) printf("Nós disconectados com sucesso\n");
-        
         else if (ret == 2) printf("Erro: Os nós não se encontram conectados\n");
-
-        return ret;
     }
 
     /* Inject */
@@ -746,8 +742,7 @@ int interpretador(char* cmdline)
         ret = inject(options);
 
         if (ret == 0) printf("Inject executado com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: O nó não existe na rede\n");
     }
 
     /* Remove */
@@ -756,8 +751,7 @@ int interpretador(char* cmdline)
         ret = remove_node(options);
 
         if (ret == 0) printf("Nó removido com sucesso\n");
-        
-        return ret;
+        else if (ret == 2) printf("Erro: O nó não existe na rede\n");
     }
 
     /* Change */
@@ -773,8 +767,7 @@ int interpretador(char* cmdline)
         }
 
         if (ret == 0) printf("Comando do nó alterado com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: O nó não existe na rede\n");
     }
 
     /* Modo de teste (Ctrl-D para regressar ao menu) */
@@ -797,10 +790,14 @@ int interpretador(char* cmdline)
 
     else {
     	printf("Erro: Comando inexistente\n");
-        return 1;
+        ret = 1;
     }
 
-    return 0;
+    /* Coloca-se a variável que indica se se está a processar um comando a 0 */
+
+    busy = 0;
+
+    return ret;
 }
 
 
@@ -833,11 +830,21 @@ int main(int argc, char* argv[])
     /* Caso seja passado um ficheiro de configuração como argumento, este é lido
        e os comando são interpretados sequencialmente (linha a linha) */
 
-    if (argc == 2) { //# falta testar
+    if (argc == 2) {
         fd = open(argv[1], O_RDONLY);
         
         while (readln(fd, buffer, MAX_SIZE) > 0) {
-            interpretador(buffer);
+
+            /* Os comandos lidos apenas são passados ao interpretador quando
+               nenhum outro está a ser processado. Isto faz com que não hajam
+               concorrências na *criação* dos componentes da rede, evitando
+               erros, por exemplo, ao aceder a FIFOs que ainda não tenham sido
+               criados */
+
+            if (busy == 0) {
+                busy = 1;
+                interpretador(buffer);
+            }
         }
     }
 
