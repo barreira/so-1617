@@ -1,28 +1,20 @@
-######### filtros	
-
-####### controlador
-
-nodes a descartar -fork
-
-
-######## makefile
-
-arranjar para compilar todos
-
-# 1 JUNHO #
+ 1 JUNHO #
 
     - quando se faz "node 1 const 123" + "node 2 tee FICHEIRO_A" + "connect 1 2" + "inject 1 cat FICHEIRO_B",
     o FICHEIRO_A fica quase todo direito, faltando-lhe apenas a última linha do FICHEIRO_B
+    ## não descobri o porquê, se fizer cat file | ./const 10 funciona com as linhas todas
+    com node 1 const e depois inject 1 cat file acontece o mesmo, ou seja o problema não é do fannout.
+    se fizer 2 injects seguidos, ele junta a nova linha no fim da anterior, ou seja ele não mete a última linha porque não tem \n
+    é o readline o culpado provavelmente.
 
-    - corrigir todos os filtros e *testá-los*
+    a solução é por um \n no fim
 
     - ver se disconnect, remove e change estão a dar bem (testar)
 
-    - leitura do ficheiro de configuração parece estar a dar bem
+     # depois de um connect x y e disconnect xy e connect de novo xy por algum motivo a passagem de info não fica direita.
 
-    - corrigir a makefile
+    - no apaga ver como se faz a string para mandar como opção, change se tiver connectado não funciona direito, testar melhor.
 
-    - criar ficheiros de teste
 
     - fazer relatório
 
@@ -31,3 +23,9 @@ arranjar para compilar todos
     - pôr só um array dos pids
 
     - colocar leitura servidor/cliente
+
+
+    ##### ERROS
+
+    não se pode fazer connect 1 2 e depois connect 1 3 (os fifos n abriram nas duas pontas - o desbloqueia(n) não funciona porque ia escrever -, mas seria uma solução.
+    tem de se fazer connect 1 2 3
