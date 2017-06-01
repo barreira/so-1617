@@ -519,7 +519,7 @@ int remove_node(char** options) {
 
     int a, numouts, i, j;
     char in[SMALL_SIZE], out[SMALL_SIZE];
-    char args[3][SMALL_SIZE];
+    char* args[3];
 
     /* Verificar se o nó recebido existe na rede */
 
@@ -575,7 +575,7 @@ int remove_node(char** options) {
                     // disconnect i j
                     strcpy(args[0], "disconnect");
                     sprintf(args[1], "%d", i);
-                    sprintf(args[2], "%d", options[1]);
+                    strcpy(args[2], options[1]);
 
                     disconnect(args);
                     break;
