@@ -14,7 +14,7 @@ all:
 
 clean:
 	rm -rf tmp
-	rm -f *.o controlador
+	rm -f *.o controlador const filter window spawn
 
 #CC=gcc
 #CFLAGS= -Wall -g
