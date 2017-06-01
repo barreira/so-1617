@@ -152,19 +152,34 @@ void fanout(int input, int outputs[], int numouts)
     
     if (fdi == -1) perror("open fifo in fanout");
 
+
     /* Abrir FIFOs de saída */
+
+//
+    for(i=0;i<numouts;i++) {
+       printf("outs[i] do fannout: %d i: %d", outputs[i],i);
+       printf("outputss[i] do fannout: %d i: %d\n", outputs[i],i);
+     }
+//
 
     for (i = 0; i < numouts; i++) {
         sprintf(aux, "%d", outputs[i]);
         sprintf(out, "./tmp/%sin", aux);
 	    fdos[i] = open(out, O_WRONLY);
 	    if (fdos[i] == -1) perror("open fifo out fanout");
+        //
+        printf("Vou abrir as saidas fifo out do fanout: %s \n",out);
     }
     
     /* Escrever nos FIFOs de saída */
 
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
     	if (!stopfan) {
+            //
+            write(1,"Fan leu:",7);
+            write(1,buffer,bytes);
+            write(1,"\n",1);
+            //
             for (i = 0; i < numouts; i++) {
                 write(fdos[i], buffer, bytes);
             }
