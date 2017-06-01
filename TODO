@@ -38,3 +38,10 @@
     3) no change se o no estiver sem nada, funciona bem, caso contrário penso que bloqueia nos fifos.
 
     4) a sequencia da redeteste.txt dá erro, escreve mas o que escreve nao bate certo (os filtros metem dirieto, mas antes passa mal)
+
+
+    ###### MAIS RECENTE:
+
+    1) ler de ficheiro tem de ser sequencial a executar os comandos
+
+    2) no change por algum motivo não está a criar o nodo (ou os fifos pelo menos)
