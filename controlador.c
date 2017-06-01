@@ -658,8 +658,7 @@ int change(char** options, int flag) {
         /* Remover o nó antigo da rede e adicionar um nó que executará o novo
            comando */
 
-	    remove_node(options); 
-        add_node(options, flag);
+	    if(!remove_node(options)) add_node(options, flag);
 	   
 
 	    /* Criar um processo que executará a conexão (fanout) relativa à
@@ -685,8 +684,8 @@ int change(char** options, int flag) {
     // #ver isto
     //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
     //###### alternativa, ver saidas e fazer disconnect e connect de novo.
-    remove_node(options);
-    add_node(options, flag);
+    if(!remove_node(options)) add_node(options, flag);
+    
     }
 
     return 0;
