@@ -36,3 +36,5 @@
     2) connect 1 2 e disconnect 1 2 e depois de novo connect 1 2 passam informações erradas, não sei porquê.
 
     3) no change se o no estiver sem nada, funciona bem, caso contrário penso que bloqueia nos fifos.
+
+    4) a sequencia da redeteste.txt dá erro, escreve mas o que escreve nao bate certo (os filtros metem dirieto, mas antes passa mal)
