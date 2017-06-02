@@ -19,6 +19,7 @@
  ******************************************************************************/
 
 int busy = 0; // indica se se está a processar um comando (main e interpretador)
+int interpretador(char* cmdline);
 
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
@@ -589,6 +590,9 @@ int remove_node(char** options) {
         dup2(devnull, 2); // stderr para /dev/null
         close(devnull);        
         execlp("rm", "rm", in, NULL);
+    } 
+    else {
+        waitpid(f1, NULL, 0);
     }
 
     f2 = fork();
@@ -601,6 +605,9 @@ int remove_node(char** options) {
         dup2(devnull, 2); // putput para /dev/null
         close(devnull);
         execlp("rm", "rm", out, NULL);
+    }
+    else {
+        waitpid(f2, NULL, 0);
     }
 
     kill(nodespid[a], SIGKILL);
@@ -656,7 +663,8 @@ int change(char** options, int flag) {
         /* Remover o nó antigo da rede e adicionar um nó que executará o novo
            comando */
 
-	    if (remove_node(options) == 0) add_node(options, flag);
+	    remove_node(options);
+        add_node(options, flag);
 
 	    /* Criar um processo que executará a conexão (fanout) relativa à
            execução do novo comando do nó */
@@ -675,7 +683,8 @@ int change(char** options, int flag) {
 	    }
     }
     else { /* A saída do nó recebido não está ligada a mais nenhum nó da rede */
-        if (remove_node(options) == 0) add_node(options, flag);
+        remove_node(options);
+        add_node(options, flag);
     }
 
     return 0;
@@ -780,18 +789,17 @@ int interpretador(char* cmdline)
 
     /* Modo de teste (Ctrl-D para regressar ao menu) */
 
-	else if (strcmp(options[0], "input") == 0) {
+	else if (strcmp(options[0], "debug") == 0) {
 		int fdp, p;
 		char backs[MAX_SIZE];
 
 		fdp = open("./tmp/1in", O_WRONLY);
 
-		write (1, "MODO DE INPUT\n", 14);
+		write (1, "* MODO DE DEBUGGING (Ctrl-D para sair) *\n", 41);
         while(((p = read(0, backs, PIPE_BUF)) > 0)) {
-			write(1, backs, p);
 			write(fdp, backs, p);
 		}
-		write (1,"Sai do input\n",14);
+		write (1, "Sai do input\n", 14);
 	}
 
     /* Comando lido não corresponde a nenhuma das opções possíveis */
@@ -847,7 +855,8 @@ int main(int argc, char* argv[])
                nenhum outro está a ser processado. Isto faz com que não hajam
                concorrências na *criação* dos componentes da rede, evitando
                erros, por exemplo, ao aceder a FIFOs que ainda não tenham sido
-               criados */
+               criados. A execução da rede continua a ser feita
+               concorrentemente */
 
             if (busy == 0) {
                 busy = 1;
