@@ -27,38 +27,36 @@ output:
 */
 
 int main(int argc, char const *argv[]){
+    char buffer[PIPE_BUF];
+    char print[PIPE_BUF];
+    char final[PIPE_BUF];
+    int n, coluna = atoi(argv[1]), valor = atoi(argv[3]), s, cut;
+    char field[100];
 
-   char buffer[PIPE_BUF];
-   char print[PIPE_BUF];
-   char final[PIPE_BUF];
-   int n, coluna = atoi(argv[1]), valor = atoi(argv[3]),s,cut;
-   char field[10];
+    while ((n = readln(0, buffer, PIPE_BUF)) >= 0) {  
+        if (n != 0) {     
+            // Achar a coluna
+            char *ptr = buffer;
+            cut = 0;
+        
+            while (sscanf(ptr, "%100[^:]%n", field, &s) == 1) {
+                cut++;
+                if (cut == coluna) sprintf(print, "%s", field); // achou a coluna, guardar valor no print
+                ptr += s; // avançar os characteres lidos
+                // if ( *ptr != ':' )  {  break; /* falhou*/  }
+                ++ptr; // salta o :
+            }
 
-   
-   while((n = readln(0,buffer,PIPE_BUF)) >= 0) {  
-      if(n!=0) {     
+            //verifica o argumento e faz a comparação
+            sprintf(final,"%s\n",buffer);
+            if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,final,strlen(final));  } 
+            if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,final,strlen(final)); } 
+            if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,final,strlen(final)); }
+            if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,final,strlen(final)); } 
+            if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,final,strlen(final)); }
+            if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,final,strlen(final)); }
+        }
+    }
 
-               //Achar a coluna
-               char *ptr = buffer;
-               cut = 0;
-               while ( sscanf(ptr, "%10[^:]%n", field, &s) == 1) {
-                  cut++;
-                  if(cut == coluna) sprintf(print,"%s",field); //achou a coluna, guardar valor no print
-                  ptr += s; /* avançar os characteres lidos */
-                  //if ( *ptr != ':' )  {  break; /* falhou*/  }
-                  ++ptr; /* salta o : */
-               }
-         //verifica o argumento e faz a comparação
-         sprintf(final,"%s\n",buffer);
-         if(strcmp(argv[2],"=") == 0) if(atoi(print) == valor) { write(1,final,strlen(final));  } 
-         if(strcmp(argv[2],">=") == 0) if(atoi(print) >= valor){ write(1,final,strlen(final)); } 
-         if(strcmp(argv[2],"<=") == 0) if(atoi(print) <= valor) { write(1,final,strlen(final)); }
-         if(strcmp(argv[2],">") == 0) if(atoi(print) > valor) { write(1,final,strlen(final)); } 
-         if(strcmp(argv[2],"<") == 0) if(atoi(print) < valor) { write(1,final,strlen(final)); }
-         if(strcmp(argv[2],"!=") == 0) if(atoi(print) != valor) { write(1,final,strlen(final)); }
-
-      }
-   }
-
-  return 0; //nunca aqui vai chegar, mas é menos um warning ao compilar
+    return 0;
 }

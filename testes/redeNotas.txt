@@ -1,0 +1,24 @@
+node 1 const MEDIA
+node 2 filter 2 > 9
+node 3 tee alunosAprovados.txt
+node 4 filter 2 = 9
+node 5 tee alunosOral.txt
+node 6 filter 2 < 9
+node 7 tee alunosExame.txt
+node 8 window 2 avg 31
+node 9 const MAXIMO
+node 10 window 2 max 31
+node 11 const MINIMO
+node 12 window 2 min 31
+node 13 tee resultadosAlunos.txt
+connect 1 2 4 6 8
+connect 2 3
+connect 4 5
+connect 6 7
+connect 8 9
+connect 9 10
+connect 10 11
+connect 11 12
+connect 12 13
+inject 1 cat ./testes/alunos.txt
+

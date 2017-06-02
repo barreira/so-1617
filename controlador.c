@@ -1,16 +1,16 @@
-#include <stdio.h>    // perror
-#include <sys/stat.h> // mkfifo
-#include <fcntl.h>    // open
-#include <unistd.h>   // read
-#include <string.h>   // strcmp, strtok
-#include <stdlib.h>   // atoi
-#include <limits.h>   // PIPE_BUF
-#include <signal.h>   // sinais
-#include <sys/wait.h> // wait
+#include <stdio.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <limits.h> // PIPE_BUF
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "readln.h"
 
-#define MAX_SIZE   PIPE_BUF //########## PIPE_BUF
+#define MAX_SIZE   PIPE_BUF
 #define SMALL_SIZE 32
 
 
@@ -18,9 +18,10 @@
  *                           VARIÁVEIS GLOBAIS                                *
  ******************************************************************************/
 
-//############### PODE-SE USAR SO O NODESPID, cuidado ao alterar se bate certo.
-int nodes[MAX_SIZE];    /* array que indica se nó existe na rede */
-int nodespid[MAX_SIZE]; /* array com os PIDs dos nós */
+int busy = 0; // indica se se está a processar um comando (main e interpretador)
+
+int nodes[MAX_SIZE];    // array que indica se nó existe na rede
+int nodespid[MAX_SIZE]; // array com os PIDs dos nós
 
 int stopfan = 0; // serve para parar o fanout (conexão entre os nós) sem ser
                  // necessário fazê-lo abruptamente (i.e. com SIGKILL)
@@ -162,16 +163,16 @@ void fanout(int input, int outputs[], int numouts)
     }
     
     /* Escrever nos FIFOs de saída */
-
+    
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
-    	if (!stopfan) {
+        if (strcmp(buffer, "-")) { // ignora a escrita da função desbloqueia
             for (i = 0; i < numouts; i++) {
-                write(fdos[i], buffer, bytes);
-            }
-    	}
+                    write(fdos[i], buffer, bytes);
+            }   
+        }
     }
     
-    _exit(0);
+    _exit(0); //quando recebe o signal para fazer stop e saí do ciclo
 }
 
 
@@ -244,7 +245,9 @@ int add_node(char** options, int flag)
         /* Redirecionar para os FIFOs (ou /dev/null) */
 
         dup2(fdi, 0);
+        close(fdi);
         dup2(fdo, 1);
+        close(fdo);
         
         /* Adicionar "./" ao nome do componente e executá-lo */
 
@@ -426,7 +429,7 @@ int disconnect(char** options)
 
             pid = fork();
 
-            if (pid == -1) { perror("fork no node"); return 1; }
+            if (pid == -1) { perror("fork node"); return 1; }
 
             if (pid == 0) {
                 fanout(a, outs, numouts);
@@ -492,6 +495,7 @@ int inject(char** options)
 
     if (pid == 0) {
         dup2(fd, 1);
+        close(fd);
         execvp(options[2], &options[2]);
         perror("exec inject");
         return 1;
@@ -517,7 +521,7 @@ int inject(char** options)
  */
 int remove_node(char** options) {
 
-    int a, numouts, i, j;
+    int a, numouts, i, j, f1, f2, devnull;
     char in[SMALL_SIZE], out[SMALL_SIZE], tmp[SMALL_SIZE];
     char* args[3];
 
@@ -545,43 +549,27 @@ int remove_node(char** options) {
 
     for (i = 0; i < MAX_SIZE; i++) {
         if (connections[i] != NULL) { 
+            
             numouts = connections[i]->numouts;
-            //printf("numouts = %d",numouts);
 
             for(j = 0; j < numouts ; j++) {
-                //printf("j= %d i= %d\n",j,i);
 
                 /* Caso uma conexão tenha o nó como OUT, faz-se o disconnect
                    entre esse nó e o nó da entrada dessa conexão */
 
-                // printf("j= %d ; connections[i]->outs[0] = %d\n",j, connections[i]->outs[0]);
-                // printf("j= %d ; connections[i]->outs[1] = %d\n",j, connections[i]->outs[1]);
-                // printf("j= %d ; connections[i]->outs[2] = %d\n",j, connections[i]->outs[2]);
-                // write(1,"seg fault\n",9);
-                // printf("j= %d vai entrar no if",j);
                 if (connections[i]->outs[j] == a) {
-                    // printf("j= %d\n",j);
 
                     /* Criar array de options do disconnect e sua executá-lo */
                     
-                    // printf("disconnect:\n");
-                    // ############################################################################ é aqui ao criar o options!!
-
-                    // sprintf(args, "disconnect %d %d", i, j); //isto aqui resolver
-
-                    // args[2] = options[1];
-                    // printf("disconnect run:\n");
-
-                    // disconnect i j
             	    args[0] = strdup("disconnect");
                     sprintf(tmp, "%d", i);
                     args[1] = strdup(tmp);
                     args[2] = strdup(options[1]);
 
-                    disconnect(args);
+                    disconnect(args); // disconnect i j
                     break;
-		}
-             } 
+                }
+            } 
     	}
     }
 
@@ -590,23 +578,39 @@ int remove_node(char** options) {
 
     sprintf(in, "./tmp/%sin", options[1]);
     sprintf(out, "./tmp/%sout", options[1]);
-    
-    if (fork() == 0) {
-        int devNull = open("/dev/null", O_WRONLY); 
-        dup2(devNull,1); //mandar output para /dev/null
-        dup2(devNull,2); //stderr putput para /dev/null
-        execlp("rm", "rm", in, NULL);
-    }
-   // perror("fork remove in"); #faz print disto porque tá no else.
 
-    if (fork() == 0) {
-        int devNull = open("/dev/null", O_WRONLY); 
-        dup2(devNull,1); //mandar output para /dev/null
-        dup2(devNull,2); //stderr putput para /dev/null
+    f1 = fork();
+
+    if (f1 == -1) { perror("fork remove in"); return 1; }
+
+    if (f1 == 0) {
+        devnull = open("/dev/null", O_WRONLY);
+        dup2(devnull, 1); // output para /dev/null
+        dup2(devnull, 2); // stderr para /dev/null
+        close(devnull);
+        execlp("rm", "rm", in, NULL);
+    } 
+    else {
+        waitpid(f1, NULL, 0);
+    }
+
+    f2 = fork();
+
+    if (f2 == -1) { perror("fork remove out"); return 1; } 
+
+    if (f2 == 0) {
+        devnull = open("/dev/null", O_WRONLY);
+        dup2(devnull, 1); // output para /dev/null
+        dup2(devnull, 2); // putput para /dev/null
+        close(devnull);
         execlp("rm", "rm", out, NULL);
+    }
+    else {
+        waitpid(f2, NULL, 0);
     }
 
     kill(nodespid[a], SIGKILL);
+    waitpid(nodespid[a],NULL,0); //esperar que o processo do nó termine
     nodes[a] = 0; // array dos nós da rede deixa de ter o nó que foi removido
 
     return 0;
@@ -659,18 +663,15 @@ int change(char** options, int flag) {
         /* Remover o nó antigo da rede e adicionar um nó que executará o novo
            comando */
 
-	    if(!remove_node(options)) add_node(options, flag);
-	   
+	    remove_node(options);
+        add_node(options, flag);
 
 	    /* Criar um processo que executará a conexão (fanout) relativa à
            execução do novo comando do nó */
 
 	    pid = fork();
 
-	    if (pid == -1) {
-            perror("fork change");
-            return 1;
-        }
+	    if (pid == -1) { perror("fork change"); return 1; }
 
 	    if (pid == 0) {
             fanout(a, outs, numouts);
@@ -682,16 +683,12 @@ int change(char** options, int flag) {
 	    }
     }
     else { /* A saída do nó recebido não está ligada a mais nenhum nó da rede */
-    // #ver isto
-    //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
-    //###### alternativa, ver saidas e fazer disconnect e connect de novo.
-    if(!remove_node(options)) add_node(options, flag);
-    
+        remove_node(options);
+        add_node(options, flag);
     }
 
     return 0;
 }
-
 
 
 /******************************************************************************
@@ -709,7 +706,7 @@ int change(char** options, int flag) {
  */
 int interpretador(char* cmdline)
 {
-    int i = 0, ret;
+    int i = 0, ret = 0;
     char* options[MAX_SIZE];
 
     /* Separa a linha recebida pelos espaços */
@@ -735,8 +732,7 @@ int interpretador(char* cmdline)
         }
 
         if (ret == 0) printf("Nó criado com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: Já existe o nó na rede\n");
     }
 
     /* Connect */
@@ -745,8 +741,7 @@ int interpretador(char* cmdline)
         ret = connect(options, i);
 
         if (ret == 0) printf("Nós conectados com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: Os nós já se encontram conectados\n");
     }
 
     /* Disconnect */
@@ -755,10 +750,7 @@ int interpretador(char* cmdline)
         ret = disconnect(options);
 
         if (ret == 0) printf("Nós disconectados com sucesso\n");
-        
         else if (ret == 2) printf("Erro: Os nós não se encontram conectados\n");
-
-        return ret;
     }
 
     /* Inject */
@@ -767,8 +759,7 @@ int interpretador(char* cmdline)
         ret = inject(options);
 
         if (ret == 0) printf("Inject executado com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: O nó não existe na rede\n");
     }
 
     /* Remove */
@@ -777,8 +768,7 @@ int interpretador(char* cmdline)
         ret = remove_node(options);
 
         if (ret == 0) printf("Nó removido com sucesso\n");
-        
-        return ret;
+        else if (ret == 2) printf("Erro: O nó não existe na rede\n");
     }
 
     /* Change */
@@ -794,34 +784,36 @@ int interpretador(char* cmdline)
         }
 
         if (ret == 0) printf("Comando do nó alterado com sucesso\n");
-
-        return ret;
+        else if (ret == 2) printf("Erro: O nó não existe na rede\n");
     }
 
     /* Modo de teste (Ctrl-D para regressar ao menu) */
 
-	else if (strcmp(options[0], "input") == 0) {
+	else if (strcmp(options[0], "debug") == 0) {
 		int fdp, p;
 		char backs[MAX_SIZE];
 
 		fdp = open("./tmp/1in", O_WRONLY);
 
-		write (1, "MODO DE INPUT\n", 14);
+		write (1, "* MODO DE DEBUGGING (Ctrl-D para sair) *\n", 41);
         while(((p = read(0, backs, PIPE_BUF)) > 0)) {
-			write(1, backs, p);
 			write(fdp, backs, p);
 		}
-		write (1,"Sai do input\n",14);
+		write (1, "Sai do input\n", 14);
 	}
 
     /* Comando lido não corresponde a nenhuma das opções possíveis */
 
     else {
     	printf("Erro: Comando inexistente\n");
-        return 1;
+        ret = 1;
     }
 
-    return 0;
+    /* Coloca-se a variável que indica se se está a processar um comando a 0 */
+
+    busy = 0;
+
+    return ret;
 }
 
 
@@ -854,11 +846,22 @@ int main(int argc, char* argv[])
     /* Caso seja passado um ficheiro de configuração como argumento, este é lido
        e os comando são interpretados sequencialmente (linha a linha) */
 
-    if (argc == 2) { //# falta testar
+    if (argc == 2) {
         fd = open(argv[1], O_RDONLY);
         
         while (readln(fd, buffer, MAX_SIZE) > 0) {
-            interpretador(buffer);
+
+            /* Os comandos lidos apenas são passados ao interpretador quando
+               nenhum outro está a ser processado. Isto faz com que não hajam
+               concorrências na *criação* dos componentes da rede, evitando
+               erros, por exemplo, ao aceder a FIFOs que ainda não tenham sido
+               criados. A execução da rede continua a ser feita
+               concorrentemente */
+
+            if (busy == 0) {
+                busy = 1;
+                interpretador(buffer);
+            }
         }
     }
 
