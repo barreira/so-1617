@@ -1,12 +1,12 @@
-#include <stdio.h>    // perror
-#include <sys/stat.h> // mkfifo
-#include <fcntl.h>    // open
-#include <unistd.h>   // read
-#include <string.h>   // strcmp, strtok
-#include <stdlib.h>   // atoi
-#include <limits.h>   // PIPE_BUF
-#include <signal.h>   // sinais
-#include <sys/wait.h> // wait
+#include <stdio.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <limits.h> // PIPE_BUF
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "readln.h"
 
