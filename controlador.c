@@ -173,7 +173,7 @@ void fanout(int input, int outputs[], int numouts)
         }
     }
     
-    _exit(0);
+    _exit(0); //quando recebe o signal para fazer stop e saí do ciclo
 }
 
 
@@ -611,6 +611,7 @@ int remove_node(char** options) {
     }
 
     kill(nodespid[a], SIGKILL);
+    waitpid(nodespid[a],NULL,0); //esperar que o processo do nó termine
     nodes[a] = 0; // array dos nós da rede deixa de ter o nó que foi removido
 
     return 0;
