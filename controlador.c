@@ -166,11 +166,11 @@ void fanout(int input, int outputs[], int numouts)
     /* Escrever nos FIFOs de saída */
     
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
-    	if (!stopfan) {
+        if (strcmp(buffer, "-")) { // ignora a escrita da função desbloqueia
             for (i = 0; i < numouts; i++) {
-                write(fdos[i], buffer, bytes);
-            }
-    	}
+                    write(fdos[i], buffer, bytes);
+            }   
+        }
     }
     
     _exit(0);
