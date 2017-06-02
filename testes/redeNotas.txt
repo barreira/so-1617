@@ -10,8 +10,8 @@ node 9 const MAXIMO
 node 10 window 2 max 30
 node 11 const MINIMO
 node 12 window 2 min 30
-node 13 tee listaalunos.txt
-node 14 sh -c tail -n 1 listaalunos.txt > resultados.txt
+node 13 tee resultadosAlunos.txt
+node 14 sh -c tail -n 1 resultadosAlunos.txt > valoresFinais.txt
 connect 1 2 4 6 8
 connect 2 3
 connect 4 5
