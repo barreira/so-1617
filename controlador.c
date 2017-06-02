@@ -19,7 +19,6 @@
  ******************************************************************************/
 
 int busy = 0; // indica se se está a processar um comando (main e interpretador)
-int interpretador(char* cmdline);
 
 int nodes[MAX_SIZE];    // array que indica se nó existe na rede
 int nodespid[MAX_SIZE]; // array com os PIDs dos nós
