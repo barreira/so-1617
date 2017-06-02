@@ -578,7 +578,7 @@ int remove_node(char** options) {
 
     sprintf(in, "./tmp/%sin", options[1]);
     sprintf(out, "./tmp/%sout", options[1]);
-
+    
     f1 = fork();
 
     if (f1 == -1) { perror("fork remove in"); return 1; }
@@ -587,7 +587,7 @@ int remove_node(char** options) {
         devnull = open("/dev/null", O_WRONLY);
         dup2(devnull, 1); // output para /dev/null
         dup2(devnull, 2); // stderr para /dev/null
-        close(devnull);
+        close(devnull);        
         execlp("rm", "rm", in, NULL);
     } 
     else {
