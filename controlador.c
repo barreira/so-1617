@@ -163,7 +163,7 @@ void fanout(int input, int outputs[], int numouts)
     }
     
     /* Escrever nos FIFOs de saída */
-
+    
     while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
     	if (!stopfan) {
             for (i = 0; i < numouts; i++) {
@@ -245,7 +245,9 @@ int add_node(char** options, int flag)
         /* Redirecionar para os FIFOs (ou /dev/null) */
 
         dup2(fdi, 0);
+        close(fdi);
         dup2(fdo, 1);
+        close(fdo);
         
         /* Adicionar "./" ao nome do componente e executá-lo */
 
@@ -493,6 +495,7 @@ int inject(char** options)
 
     if (pid == 0) {
         dup2(fd, 1);
+        close(fd);
         execvp(options[2], &options[2]);
         perror("exec inject");
         return 1;
@@ -583,7 +586,8 @@ int remove_node(char** options) {
     if (f1 == 0) {
         devnull = open("/dev/null", O_WRONLY);
         dup2(devnull, 1); // output para /dev/null
-        dup2(devnull, 2); // stderr para /dev/null        
+        dup2(devnull, 2); // stderr para /dev/null
+        close(devnull);        
         execlp("rm", "rm", in, NULL);
     }
 
@@ -595,6 +599,7 @@ int remove_node(char** options) {
         devnull = open("/dev/null", O_WRONLY);
         dup2(devnull, 1); // output para /dev/null
         dup2(devnull, 2); // putput para /dev/null
+        close(devnull);
         execlp("rm", "rm", out, NULL);
     }
 
@@ -670,9 +675,6 @@ int change(char** options, int flag) {
 	    }
     }
     else { /* A saída do nó recebido não está ligada a mais nenhum nó da rede */
-        // #ver isto
-        //###### aqui vai dar barraca porque vai fechar fifos que não vão ser abertos de novo com um fannout, ver saidas, quando encontrar, matar esse fannout e correr de novo no fim de criar o nodo.
-        //###### alternativa, ver saidas e fazer disconnect e connect de novo.
         if (remove_node(options) == 0) add_node(options, flag);
     }
 
