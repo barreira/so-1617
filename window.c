@@ -36,7 +36,7 @@ int main(int argc, char const *argv[]){
 	char buffer[PIPE_BUF];
 	char print[PIPE_BUF];
 	char final[PIPE_BUF];
-	char field[10];
+	char field[100];
 	
 	//AVG
 	int do_avg(){
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[]){
       //Achar a coluna
       char *ptr = buffer;
       cut = 0;
-      while ( sscanf(ptr, "%10[^:]%n", field, &s) == 1) {
+      while ( sscanf(ptr, "%100[^:]%n", field, &s) == 1) {
          cut++;
          if(cut == coluna) sprintf(print,"%s\n",field); //achou a coluna, guardar valor no print
          ptr += s; /* avançar os characteres lidos */
