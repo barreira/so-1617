@@ -1,4 +1,0 @@
-node 1 const 123
-node 2 tee zzz.txt
-connect 1 2
-inject 1 cat log2.txt

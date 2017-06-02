@@ -3,4 +3,5 @@ const
 filter
 window
 spawn
+*.out
 *.o

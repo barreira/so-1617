@@ -1,7 +1,0 @@
-node 1 const 1111
-node 2 const 2222
-remove 2
-node 2 const weeeee
-connect 1 2
-inject 1 cat input.txt
-
