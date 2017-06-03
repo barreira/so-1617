@@ -9,7 +9,6 @@
 
 #include "readln.h"
 
-
 /*
  * @brief Este programa reproduz as linhas acrescentando uma nova coluna sempre com o
  * mesmo valor.
@@ -19,7 +18,7 @@
  * input:  a:b:c
  * output: a:b:c:const
  */ 
-int main(int argc, char const *argv[]) {
+int main(int argc, char const *argv[]) { // não pára com EOF 
 	char buffer[PIPE_BUF];
 	char print[PIPE_BUF];
 	int n;
