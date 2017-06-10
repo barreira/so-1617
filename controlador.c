@@ -165,7 +165,7 @@ void fanout(int input, int outputs[], int numouts)
     
     /* Escrever nos FIFOs de saída */
     
-    while (!stopfan && (bytes = read(fdi, buffer, PIPE_BUF)) > 0) {
+    while (!stopfan && (bytes = readln(fdi, buffer, PIPE_BUF)) > 0) {
         if (strcmp(buffer, "-")) { // ignora a escrita da função desbloqueia
             for (i = 0; i < numouts; i++) {
                     write(fdos[i], buffer, bytes);
@@ -611,7 +611,7 @@ int remove_node(char** options) {
     }
 
     kill(nodespid[a], SIGKILL);
-    waitpid(nodespid[a],NULL,0); //esperar que o processo do nó termine
+    waitpid(nodespid[a], NULL, 0); //esperar que o processo do nó termine
     nodes[a] = 0; // array dos nós da rede deixa de ter o nó que foi removido
 
     return 0;
