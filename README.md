@@ -1,4 +1,5 @@
 # SO
+### Nota final do trabalho: 18 em 20.
 
 Trabalho prático da U.C. de Sistemas Operativos (2016/2017)
 
