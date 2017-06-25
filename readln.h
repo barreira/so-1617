@@ -16,18 +16,20 @@ ssize_t readln(int fildes, void* buf, size_t nbyte) {
 	for (i = 0; i < nbyte; i++) {
 		n = read(fildes, buf+i, 1);
 
-		if (n == -1) return -1;
+		if (n == -1) {
+			return -1;
+		}
 
 		if (n == 0) {
-            break;
-        }
+            		break;
+        	}
 
 		if (((char*) buf)[i] == '\n') {
-            break;
-        }
+		    break;
+		}
 	}
 
-    ((char*) buf)[i] = '\0';
+	((char*) buf)[i] = '\0';
 
 	return i;
 }
